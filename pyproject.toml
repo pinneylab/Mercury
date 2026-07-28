@@ -36,3 +36,10 @@ pick-corners = "htbam_analysis.scripts.run_corner_picker:main"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+markers = [
+    "e2e: End-to-end tests for processing and analysis",
+    "slow: Tests that take a long time to run (e.g. full raw image processing)"
+]
