@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "mercury"
-version = "1.3.3"
+version = "2.0.0"
 description = ""
-authors = ["Nicholas-Freitas <nicholas.freitas@ucsf.edu>", "duncan-muir <muir.duncan@gmail.com>"]
+authors = ["Nicholas-Freitas <nicholas.freitas@ucsf.edu>", "duncan-muir <muir.duncan@gmail.com>", "jzhang1198 <jonathan.zhang@ucsf.edu>"]
 readme = "README.md"
 
 include = [
@@ -30,6 +30,7 @@ pint = ">=0.24,<1"
 scikit-learn = ">=1.4.0"
 jupyter = ">=1.0.0"
 anywidget = ">=0.9.0"
+
 [tool.poetry.scripts]
 pick-corners = "mercury.scripts.run_corner_picker:main"
 
