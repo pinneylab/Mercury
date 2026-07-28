@@ -2,7 +2,7 @@
 
 """Top-level package for processing."""
 
-from htbam_analysis.processing import chip, experiment
+from mercury.processing import chip, experiment
 
 __author__ = """Daniel Mokhtari"""
 __email__ = ""

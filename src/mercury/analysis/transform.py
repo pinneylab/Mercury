@@ -2,7 +2,7 @@
 # Take Data4D, Data3D, etc
 # And perform operations (keeping it the same shape) via multiply, divide, add, subtract, etc.
 
-# Should the data objects be in HTBAM_analysis? I feel like maybe...
+# Should the data objects be in mercury? I feel like maybe...
 
 # def transform_data(data: Data4D, apply_to: str, store_as: str, function: callable, flatten: bool = False, data_type: str = None) -> dict:
 #     """
@@ -12,7 +12,7 @@
 #     Parameters
 #     ----------
 #     data : dict
-#         Dictionary in "RFU_data" format (see htbam_analysis.db_api.py).
+#         Dictionary in "RFU_data" format (see mercury.db_api.py).
 #     apply_to : str
 #         Key in data["dep_vars"] to apply the function to.
 #     store_as : str
@@ -46,7 +46,7 @@
 import numpy as np
 from copy import deepcopy
 import pint
-from htbam_analysis.db_api.units import units
+from mercury.db_api.units import units
 
 def transform_data(
     data_objs: list,        # list of Data2D, Data3D, Data4D instances (all same class and shape)

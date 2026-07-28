@@ -6,9 +6,9 @@ from typing import List, Dict, Tuple
 from scipy.optimize import curve_fit
 import inspect
 
-from htbam_analysis.db_api.data import Data4D, Data3D, Data2D, Meta
-from htbam_analysis.db_api.units.units import units as ureg
-from htbam_analysis.analysis.filter import make_custom_mask
+from mercury.db_api.data import Data4D, Data3D, Data2D, Meta
+from mercury.db_api.units.units import units as ureg
+from mercury.analysis.filter import make_custom_mask
 
 from pint.errors import DimensionalityError
 
@@ -117,7 +117,7 @@ def fit_concentration_vs_time_fast(data: Data4D, *, min_pts: int = 2, start_time
     Parameters
     ----------
     data : Data4D
-        Data object in Data4D format (see htbam_analysis.db_api.data).
+        Data object in Data4D format (see mercury.db_api.data).
     min_pts : int, optional
         Minimum number of (x, y) pairs required for a fit
         (default 2).
@@ -313,7 +313,7 @@ def fit_concentration_vs_time(data: Data4D, *, min_pts: int = 2, start_timepoint
     Parameters
     ----------
     data : Data4D
-        Data object in Data4D format (see htbam_analysis.db_api.data).
+        Data object in Data4D format (see mercury.db_api.data).
     min_pts : int, optional
         Minimum number of (x, y) pairs required for a fit
         (default 2).
@@ -509,7 +509,7 @@ def fit_luminance_vs_concentration(data: Data4D, *, min_pts: int = 2, timepoint:
     Parameters
     ----------
     data : Data4D
-        Dictionary in "Data4D" format (see htbam_analysis.db_api.data).
+        Dictionary in "Data4D" format (see mercury.db_api.data).
     min_pts : int, optional
         Minimum number of (x, y) pairs required for a fit
         (default 2).

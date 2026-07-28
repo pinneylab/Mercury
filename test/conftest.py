@@ -5,7 +5,7 @@ import pytest
 
 @pytest.fixture(scope="session")
 def project_root():
-    """Returns the root directory of the htbam_analysis repository."""
+    """Returns the root directory of the mercury repository."""
     return Path(__file__).parent.parent
 
 
@@ -19,9 +19,9 @@ def workspace_root(project_root):
 def raw_example_data_dir(workspace_root):
     """
     Returns the path to raw image example data for Hayden's experiment.
-    Can be overridden by setting the HTBAM_TEST_DATA_DIR environment variable.
+    Can be overridden by setting the MERCURY_TEST_DATA_DIR environment variable.
     """
-    custom_path = os.environ.get("HTBAM_TEST_DATA_DIR")
+    custom_path = os.environ.get("MERCURY_TEST_DATA_DIR") or os.environ.get("HTBAM_TEST_DATA_DIR")
     if custom_path:
         return Path(custom_path)
     return workspace_root / "example_data" / "hayden" / "20260618_AdkSubset_DnaK"

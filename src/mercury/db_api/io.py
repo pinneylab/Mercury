@@ -1,7 +1,7 @@
-from htbam_analysis.db_api.exceptions import HtbamDBException
-from htbam_analysis.db_api.csv_processing import CSV_DATA_LABELS, parse_concentration
-from htbam_analysis.db_api.csv_processing import process_dataframe_kinetics, process_dataframe_binding
-from htbam_analysis.db_api.data import Data2D, Data3D, Data4D, IndepVars, Meta
+from mercury.db_api.exceptions import MercuryDBException
+from mercury.db_api.csv_processing import CSV_DATA_LABELS, parse_concentration
+from mercury.db_api.csv_processing import process_dataframe_kinetics, process_dataframe_binding
+from mercury.db_api.data import Data2D, Data3D, Data4D, IndepVars, Meta
 
 from pathlib import Path
 from copy import copy
@@ -41,9 +41,9 @@ def verify_file_exists(file_path: str) -> None:
                 parent_file = parent_file.parent
         
         if not parent_file_exists:
-            raise HtbamDBException(f"File {file_path} does not exist. We cannot find any files matching the path provided")
+            raise MercuryDBException(f"File {file_path} does not exist. We cannot find any files matching the path provided")
         else:
-            raise HtbamDBException(f"File {file_path} does not exist. We found the parent file {parent_file} but it does not contain the file you requested.\n \
+            raise MercuryDBException(f"File {file_path} does not exist. We found the parent file {parent_file} but it does not contain the file you requested.\n \
                                    We found the following files in the parent directory:\n" + "\n".join(parent_file_contents))
 
 def load_run_from_csv(
@@ -92,7 +92,7 @@ def load_run_from_csv(
     if concentration_col in df.columns:
         df[L['concentration']] = df[concentration_col].apply(lambda x: parse_concentration(x, conc_unit))
     else:
-        raise HtbamDBException(f"Concentration column '{concentration_col}' not found in {csv_path}. Columns available: {df.columns.tolist()}")
+        raise MercuryDBException(f"Concentration column '{concentration_col}' not found in {csv_path}. Columns available: {df.columns.tolist()}")
 
     # Create unique Chamber_IDs as "x,y"
     df[L['chamber_IDs']] = df[L['chamber_x']].astype(str) + ',' + df[L['chamber_y']].astype(str)
@@ -111,18 +111,18 @@ def load_run_from_csv(
     }
 
     if run_type not in data_processing_functions:
-        raise HtbamDBException(f"Unknown run_type '{run_type}'. Expected one of {list(data_processing_functions.keys())}.")
+        raise MercuryDBException(f"Unknown run_type '{run_type}'. Expected one of {list(data_processing_functions.keys())}.")
 
     if run_type == 'binding':
         L_bind = copy(CSV_DATA_LABELS)
         signal_col = signal_col or L_bind['binding_signal']
         image_type_col = image_type_col or L_bind['binding_image_type']
         if signal_col not in df.columns:
-            raise HtbamDBException(
+            raise MercuryDBException(
                 f"Signal column '{signal_col}' not found in {csv_path}. Columns available: {df.columns.tolist()}"
             )
         if image_type_col not in df.columns:
-            raise HtbamDBException(
+            raise MercuryDBException(
                 f"Image type column '{image_type_col}' not found in {csv_path}. Columns available: {df.columns.tolist()}"
             )
         run_data = process_dataframe_binding(
@@ -139,7 +139,7 @@ def load_run_from_csv(
 
     return run_data
 
-from htbam_analysis.db_api.units import units
+from mercury.db_api.units import units
 
 def load_button_quant_from_csv(csv_path: str) -> Data2D:
     '''
@@ -158,7 +158,7 @@ def load_button_quant_from_csv(csv_path: str) -> Data2D:
     bq_col = 'summed_button_BGsub' if 'summed_button_BGsub' in df.columns else L['button_quant_sum']
     
     if bq_col not in df.columns:
-        raise HtbamDBException(f"Button quant column '{bq_col}' not found in {csv_path}")
+        raise MercuryDBException(f"Button quant column '{bq_col}' not found in {csv_path}")
 
     # Create unique Chamber_IDs as "x,y"
     df[L['chamber_IDs']] = df[L['chamber_x']].astype(str) + ',' + df[L['chamber_y']].astype(str)

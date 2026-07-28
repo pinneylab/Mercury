@@ -2,7 +2,7 @@ import numpy as np
 import pint
 from copy import copy
 
-from htbam_analysis.db_api.units import units
+from mercury.db_api.units import units
 
 # These are the CSV columns that correspond with our human-readable labels.
 CSV_DATA_LABELS = {
@@ -88,7 +88,7 @@ def process_dataframe_kinetics(df, time_unit: pint.Unit, conc_unit: pint.Unit):
     time_array = time_array * time_unit
     
     ### Create the data object:
-    from htbam_analysis.db_api.data import Data4D, IndepVars, Meta
+    from mercury.db_api.data import Data4D, IndepVars, Meta
     # Independent variables:
     indep_vars = IndepVars(concentrations, chamber_ids, sample_ids, button_quant, time_array)
     # Meta data:
@@ -176,7 +176,7 @@ def process_dataframe_binding(
     concentrations = concentrations * conc_unit
     button_quant = button_quant * units.RFU
 
-    from htbam_analysis.db_api.data import Data3D, IndepVars, Meta
+    from mercury.db_api.data import Data3D, IndepVars, Meta
     indep_vars = IndepVars(
         concentrations,
         chamber_ids,

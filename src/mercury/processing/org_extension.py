@@ -18,8 +18,8 @@ from skimage import measure
 import pandas as pd
 import matplotlib.pyplot as pl
 
-from htbam_analysis.processing import experiment as exp
-from htbam_analysis.processing import chipcollections as collections
+from mercury.processing import experiment as exp
+from mercury.processing import chipcollections as collections
 
 
 INTRA_TILE_SPACING = 63

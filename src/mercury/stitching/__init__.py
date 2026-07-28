@@ -2,7 +2,7 @@
 
 """Top-level package for stitching."""
 
-from htbam_analysis.stitching import rastering
+from mercury.stitching import rastering
 
 __author__ = """Jonathan Zhang"""
 __email__ = ""

@@ -2,7 +2,7 @@ import gc
 import warnings
 from copy import deepcopy
 from collections import namedtuple
-# from htbam_analysis.processing import experiment
+# from mercury.processing import experiment
 
 import numpy as np
 import numpy.ma as ma

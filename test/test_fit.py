@@ -1,14 +1,14 @@
 import unittest
 import numpy as np
-from htbam_analysis.analysis.fit import (
+from mercury.analysis.fit import (
     mm_model,
     inhibition_model,
     fit_concentration_vs_time,
     fit_luminance_vs_concentration,
     fit_initial_rates_vs_concentration_with_function
 )
-from htbam_analysis.db_api.data import Data4D, Data3D, Data2D, IndepVars, Meta
-from htbam_analysis.db_api.units.units import units
+from mercury.db_api.data import Data4D, Data3D, Data2D, IndepVars, Meta
+from mercury.db_api.units.units import units
 
 
 class TestFitModels(unittest.TestCase):

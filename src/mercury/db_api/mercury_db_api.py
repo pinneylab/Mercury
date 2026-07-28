@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod, abstractproperty
-from htbam_analysis.db_api.data import Data2D, Data3D, Data4D, Meta
+from mercury.db_api.data import Data2D, Data3D, Data4D, Meta
 import pandas as pd
 from typing import List, Literal, Optional, Tuple
 import numpy as np
@@ -9,11 +9,11 @@ import re
 from copy import deepcopy
 import pint
 
-from htbam_analysis.db_api.exceptions import HtbamDBException
-from htbam_analysis.db_api.io import verify_file_exists, load_run_from_csv, load_button_quant_from_csv
-from htbam_analysis.db_api.units import units
+from mercury.db_api.exceptions import MercuryDBException
+from mercury.db_api.io import verify_file_exists, load_run_from_csv, load_button_quant_from_csv
+from mercury.db_api.units import units
 
-class AbstractHtbamDBAPI(ABC):
+class AbstractMercuryDBAPI(ABC):
     def __init__(self):
         pass
 
@@ -29,7 +29,7 @@ class AbstractHtbamDBAPI(ABC):
     # def create_analysis(self, run_name: str):
     #     raise NotImplementedError
 
-class LocalHtbamDBAPI(AbstractHtbamDBAPI):
+class LocalMercuryDBAPI(AbstractMercuryDBAPI):
 
     def __init__(
         self,
@@ -56,8 +56,8 @@ class LocalHtbamDBAPI(AbstractHtbamDBAPI):
         ]
         if any(arg is not None for arg in legacy_args):
             if not all(arg is not None for arg in legacy_args):
-                raise HtbamDBException(
-                    "Legacy LocalHtbamDBAPI initialization requires all standard, kinetic, "
+                raise MercuryDBException(
+                    "Legacy LocalMercuryDBAPI initialization requires all standard, kinetic, "
                     "and button_quant arguments to be provided."
                 )
             self.load_run(
@@ -99,7 +99,7 @@ class LocalHtbamDBAPI(AbstractHtbamDBAPI):
 
         if run_type in ('kinetics', 'binding'):
             if conc_unit is None or time_unit is None or concentration_col is None:
-                raise HtbamDBException(
+                raise MercuryDBException(
                     f"run_type '{run_type}' requires conc_unit, time_unit, and concentration_col."
                 )
             run_data = load_run_from_csv(
@@ -116,7 +116,7 @@ class LocalHtbamDBAPI(AbstractHtbamDBAPI):
         elif run_type == 'button_quant':
             run_data = load_button_quant_from_csv(csv_path)
         else:
-            raise HtbamDBException(f"Unknown run_type '{run_type}'.")
+            raise MercuryDBException(f"Unknown run_type '{run_type}'.")
 
         self.add_run(run_name, run_data)
 
@@ -193,7 +193,7 @@ class LocalHtbamDBAPI(AbstractHtbamDBAPI):
         '''
         # Check if the format matches one of the allowed dataclasses:
         if not isinstance(run_data, (Data2D, Data3D, Data4D)):
-            raise HtbamDBException(f"Run data must be of type Data2D, Data3D, or Data4D. Got {type(run_data)}")
+            raise MercuryDBException(f"Run data must be of type Data2D, Data3D, or Data4D. Got {type(run_data)}")
         
         # Add to the database:
         self._json_dict['runs'][run_name] = run_data
@@ -210,7 +210,7 @@ class LocalHtbamDBAPI(AbstractHtbamDBAPI):
                         dict: Data for the run
         '''
         if run_name not in self._json_dict['runs'].keys():
-            raise HtbamDBException(f"Run {run_name} not found in database.")
+            raise MercuryDBException(f"Run {run_name} not found in database.")
         
         return self._json_dict['runs'][run_name]
     
@@ -226,7 +226,7 @@ class LocalHtbamDBAPI(AbstractHtbamDBAPI):
         '''
         # TODO: unused
         if name not in self._json_dict['metadata'].keys():
-            raise HtbamDBException(f"Metadata {name} not found in database.")
+            raise MercuryDBException(f"Metadata {name} not found in database.")
         
         return self._json_dict['metadata'][name]
     

@@ -2,9 +2,9 @@ import pytest
 from pathlib import Path
 import pandas as pd
 
-from htbam_analysis.stitching import ImageStitcher, BackgroundSubtractor
-from htbam_analysis.processing import Processor
-from htbam_analysis.processing.experiment import Experiment, Device, DataHandler
+from mercury.stitching import ImageStitcher, BackgroundSubtractor
+from mercury.processing import Processor
+from mercury.processing.experiment import Experiment, Device, DataHandler
 
 
 @pytest.mark.e2e

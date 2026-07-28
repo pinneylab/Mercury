@@ -1,2 +1,0 @@
-class HtbamDBException(Exception):
-    pass

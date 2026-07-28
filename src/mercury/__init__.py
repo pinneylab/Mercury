@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""Top-level package for htbam analysis code"""
+"""Top-level package for mercury analysis code"""
 
 __author__ = """Duncan Muir"""
 __email__ = "duncan.muir@ucsf.edu"

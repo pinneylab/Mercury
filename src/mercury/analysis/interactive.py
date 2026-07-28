@@ -303,7 +303,7 @@ class ImageMaskPicker:
         Returns:
             DataND object representing the custom mask.
         """
-        from htbam_analysis.analysis.filter import make_custom_mask
+        from mercury.analysis.filter import make_custom_mask
         
         n_conc = data.dep_var.shape[0]
         n_chambers = data.dep_var.shape[1]

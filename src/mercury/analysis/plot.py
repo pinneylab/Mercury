@@ -12,7 +12,7 @@ import io
 # Utilities
 from typing import TYPE_CHECKING, List, Dict, Optional, Any
 if TYPE_CHECKING:
-    from htbam_analysis.analysis.experiment import HTBAMExperiment
+    from mercury.analysis.experiment import MercuryExperiment
 
 def find_free_port(start_port=8050):
     port = start_port
@@ -26,8 +26,8 @@ def find_free_port(start_port=8050):
             attempts += 1
     raise Exception(f"No free ports found in range {start_port}-{start_port+200}")
 
-# HTBAM Data
-from htbam_analysis.db_api.data import Data4D, Data3D, Data2D
+# Mercury Data
+from mercury.db_api.data import Data4D, Data3D, Data2D
 
 # Plotting
 import seaborn as sns
@@ -268,12 +268,12 @@ def plot_chip(plotting_var, chamber_names, graphing_function=None, title=None, c
     print(f"Running on port: {free_port}")
     app.run(port=free_port)
 
-def plot_chip_by_variable(experiment: 'HTBAMExperiment', analysis_name: str, variable: str):
+def plot_chip_by_variable(experiment: 'MercuryExperiment', analysis_name: str, variable: str):
     '''
     Plot a full chip with raw data and a specified variable.
 
     Parameters:
-        experiment ('HTBAMExperiment'): the experiment object.
+        experiment ('MercuryExperiment'): the experiment object.
         analysis_name (str): the name of the analysis to be plotted.
         variable (str): the name of the variable to be plotted.
 
@@ -332,12 +332,12 @@ def plot_chip_by_variable(experiment: 'HTBAMExperiment', analysis_name: str, var
 
     plot_chip(concentration_dict, sample_names_dict, title=f'Analysis: {plotting_var}', graphing_function=plot_chamber_variable, colorbar_title=plotting_var)
 
-def plot_standard_curve_chip(experiment: 'HTBAMExperiment', analysis_name: str, experiment_name: str):
+def plot_standard_curve_chip(experiment: 'MercuryExperiment', analysis_name: str, experiment_name: str):
     '''
     Plot a full chip with raw data and std curve slopes.
 
     Parameters:
-        experiment ('HTBAMExperiment'): the experiment object.
+        experiment ('MercuryExperiment'): the experiment object.
         analysis_name (str): the name of the analysis to be plotted.
         experiment_name (str): the name of the raw experiment data to be plotted.
 
@@ -415,7 +415,7 @@ def plot_standard_curve_chip(experiment: 'HTBAMExperiment', analysis_name: str, 
     
     plot_chip(slopes_dict, sample_names_dict, graphing_function=plot_chamber_slopes, title='Standard Curve: Slope', colorbar_title='Slope')
 
-def plot_initial_rates_chip(experiment: 'HTBAMExperiment', analysis_name: str, experiment_name: str, skip_start_timepoint: bool = True,
+def plot_initial_rates_chip(experiment: 'MercuryExperiment', analysis_name: str, experiment_name: str, skip_start_timepoint: bool = True,
                             fit_points_mask: str = None,
                             plot_xmax: float = None, plot_ymax: float = None,
                             plot_xmin: float = None, plot_ymin: float = None):
@@ -423,7 +423,7 @@ def plot_initial_rates_chip(experiment: 'HTBAMExperiment', analysis_name: str, e
     Plot a full chip with raw data and fit initial rates.
 
     Parameters:
-        experiment ('HTBAMExperiment'): the experiment object.
+        experiment ('MercuryExperiment'): the experiment object.
         analysis_name (str): the name of the analysis to be plotted.
         experiment_name (str): the name of the experiment to be plotted.
         skip_start_timepoint (bool): whether to skip the first timepoint in the analysis (Sometimes are unusually low). Default is True.
@@ -545,7 +545,7 @@ def plot_initial_rates_chip(experiment: 'HTBAMExperiment', analysis_name: str, e
     
     plot_chip(slopes_dict, sample_names_dict, graphing_function=plot_chamber_initial_rates, title='Kinetics: Initial Rates', colorbar_title='Highest Initial Rate')
 
-def plot_product_vs_time_chip(experiment: 'HTBAMExperiment', experiment_name: str, skip_start_timepoint: bool = True,
+def plot_product_vs_time_chip(experiment: 'MercuryExperiment', experiment_name: str, skip_start_timepoint: bool = True,
                              fit_points_mask: str = None,
                              plot_xmax: float = None, plot_ymax: float = None,
                              plot_xmin: float = None, plot_ymin: float = None):
@@ -553,7 +553,7 @@ def plot_product_vs_time_chip(experiment: 'HTBAMExperiment', experiment_name: st
     Plot a full chip with product concentration vs time for each chamber.
 
     Parameters:
-        experiment ('HTBAMExperiment'): the experiment object.
+        experiment ('MercuryExperiment'): the experiment object.
         experiment_name (str): the name of the experiment to be plotted.
         skip_start_timepoint (bool): whether to skip the first timepoint in the analysis. Default is True.
 
@@ -627,7 +627,7 @@ def plot_product_vs_time_chip(experiment: 'HTBAMExperiment', experiment_name: st
 
     plot_chip(product_dict, sample_names_dict, graphing_function=plot_chamber_product, title='Kinetics: Product vs Time', colorbar_title='Max Product Concentration')
 
-def plot_initial_rates_vs_concentration_chip(experiment: 'HTBAMExperiment',
+def plot_initial_rates_vs_concentration_chip(experiment: 'MercuryExperiment',
                                              analysis_name: str,
                                              model_fit_name: str = None,
                                              model_pred_data_name: str = None,
@@ -693,7 +693,7 @@ def plot_initial_rates_vs_concentration_chip(experiment: 'HTBAMExperiment',
               title="Initial Rates vs Concentration",
               colorbar_title="Mean Initial Rate")
 
-def plot_MM_chip(experiment: 'HTBAMExperiment',
+def plot_MM_chip(experiment: 'MercuryExperiment',
                 analysis_name: str,
                 model_fit_name: str,
                 model_pred_data_name: str = None,
@@ -773,7 +773,7 @@ def plot_MM_chip(experiment: 'HTBAMExperiment',
               title="Initial Rates vs Concentration",
               colorbar_title="V_max")
 
-def plot_binding_isotherm_chip(experiment: 'HTBAMExperiment',
+def plot_binding_isotherm_chip(experiment: 'MercuryExperiment',
                                experiment_name: str,
                                model_fit_name: str,
                                model_pred_data_name: str = None,
@@ -849,7 +849,7 @@ def plot_binding_isotherm_chip(experiment: 'HTBAMExperiment',
               title="Binding Isotherms",
               colorbar_title="Kd")
 
-def plot_MM_div_E_chip(experiment: 'HTBAMExperiment',
+def plot_MM_div_E_chip(experiment: 'MercuryExperiment',
                 analysis_name: str,
                 model_fit_name: str,
                 dep_var_name='slope',
@@ -913,7 +913,7 @@ def plot_MM_div_E_chip(experiment: 'HTBAMExperiment',
         kcat_down = mean_kcat - kcat_stdev
 
         # calculate new slopes
-        from htbam_analysis.analysis.fit import mm_model
+        from mercury.analysis.fit import mm_model
 
         pred_y_mean = mm_model(conc, mean_kcat, mean_km)
         pred_y_up = mm_model(conc, kcat_up, mean_km)
@@ -954,7 +954,7 @@ def plot_MM_div_E_chip(experiment: 'HTBAMExperiment',
               title="V_0/[E] vs [S]",
               colorbar_title="k_cat")       
 
-def plot_ic50_chip(experiment: 'HTBAMExperiment',
+def plot_ic50_chip(experiment: 'MercuryExperiment',
                 analysis_name: str,
                 model_fit_name: str,
                 model_pred_data_name: str = None,
@@ -1034,12 +1034,12 @@ def plot_ic50_chip(experiment: 'HTBAMExperiment',
               title="Initial Rates vs Concentration",
               colorbar_title="IC50")
 
-def plot_enzyme_concentration_chip(experiment: 'HTBAMExperiment', analysis_name: str, skip_start_timepoint: bool = True):
+def plot_enzyme_concentration_chip(experiment: 'MercuryExperiment', analysis_name: str, skip_start_timepoint: bool = True):
     '''
     Plot a full chip with raw data and fit initial rates.
 
     Parameters:
-        experiment ('HTBAMExperiment'): the experiment object.
+        experiment ('MercuryExperiment'): the experiment object.
         analysis_name (str): the name of the analysis to be plotted.
         skip_start_timepoint (bool): whether to skip the first timepoint in the analysis (Sometimes are unusually low). Default is True.
 
@@ -1096,12 +1096,12 @@ def plot_enzyme_concentration_chip(experiment: 'HTBAMExperiment', analysis_name:
             title=f'Enzyme Concentration',
             colorbar_title='Concentration')
 
-def plot_mask_chip(experiment: 'HTBAMExperiment', mask_name: str):
+def plot_mask_chip(experiment: 'MercuryExperiment', mask_name: str):
     '''
     Plot a full chip with raw data and fit initial rates.
 
     Parameters:
-        experiment ('HTBAMExperiment'): the experiment object.
+        experiment ('MercuryExperiment'): the experiment object.
         mask_name (str): the name of the mask to be plotted. (Data3D or Data2D)
 
     Returns:
@@ -1146,12 +1146,12 @@ def plot_mask_chip(experiment: 'HTBAMExperiment', mask_name: str):
     
     plot_chip(mask_sum, sample_names_dict, title=f'# Concentrations that pass filter: {mask_name}', colorbar_title='Count')
 
-def plot_chip_by_variable(experiment: 'HTBAMExperiment', analysis_name: str, variable: str):
+def plot_chip_by_variable(experiment: 'MercuryExperiment', analysis_name: str, variable: str):
     '''
     Plot a chip using arbitrary DataND object, by specifying the variable to plot.
 
     Parameters:
-        experiment ('HTBAMExperiment'): the experiment object.
+        experiment ('MercuryExperiment'): the experiment object.
         analysis_name (str): the name of the analysis to be plotted. (Data3D or Data2D)
         variable (str): the variable to plot.
 

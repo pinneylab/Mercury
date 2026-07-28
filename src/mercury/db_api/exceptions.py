@@ -1,0 +1,2 @@
+class MercuryDBException(Exception):
+    pass

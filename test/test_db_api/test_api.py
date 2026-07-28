@@ -1,14 +1,14 @@
 import unittest
 import numpy as np
-from htbam_analysis.db_api import htbam_db_api
-from htbam_analysis.db_api.units import units
-from htbam_analysis.db_api.data import Data4D, Data2D
+from mercury.db_api import mercury_db_api
+from mercury.db_api.units import units
+from mercury.db_api.data import Data4D, Data2D
 
 
-class TestLocalHtbamDBAPI(unittest.TestCase):
+class TestLocalMercuryDBAPI(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.db_api = htbam_db_api.LocalHtbamDBAPI(
+        self.db_api = mercury_db_api.LocalMercuryDBAPI(
             standard_curve_data_path="./test/test_db_api/test_data/mpro_standard_test.csv",
             standard_name="Mpro_std",
             standard_substrate="IDK",

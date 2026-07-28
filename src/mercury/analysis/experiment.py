@@ -11,20 +11,20 @@ from tqdm import tqdm
 import numpy as np
 import pandas as pd
 
-# HTBAM
-from htbam_analysis.db_api.htbam_db_api import AbstractHtbamDBAPI, HtbamDBException
-from htbam_analysis.db_api.data import Data4D, Data3D, Data2D, Meta
-from htbam_analysis.analysis.plot import plot_chip
-from htbam_analysis.analysis.fit import mm_model, binding_isotherm_model
-#from htbam_analysis.analysis.fit import fit_luminance_vs_time, fit_luminance_vs_concentration
+# Mercury
+from mercury.db_api.mercury_db_api import AbstractMercuryDBAPI, MercuryDBException
+from mercury.db_api.data import Data4D, Data3D, Data2D, Meta
+from mercury.analysis.plot import plot_chip
+from mercury.analysis.fit import mm_model, binding_isotherm_model
+#from mercury.analysis.fit import fit_luminance_vs_time, fit_luminance_vs_concentration
 
 # Plotting
 import seaborn as sns
 import matplotlib.pyplot as plt
 
 
-class HTBAMExperiment:
-    def __init__(self, db_connection: AbstractHtbamDBAPI):
+class MercuryExperiment:
+    def __init__(self, db_connection: AbstractMercuryDBAPI):
         self._db_conn = db_connection
         print("\nConnected to database.")
         print("Experiment found with the following runs:")
@@ -33,9 +33,9 @@ class HTBAMExperiment:
     
     def __repr__(self):
         '''
-        Returns a string representation of the HTBAMExperiment object.
+        Returns a string representation of the MercuryExperiment object.
         Output:
-            str: a string representation of the HTBAMExperiment object.
+            str: a string representation of the MercuryExperiment object.
         '''
         return str(self._db_conn)
     
@@ -999,7 +999,7 @@ class HTBAMExperiment:
             x_mm = conc
             if hasattr(x_mm, "magnitude"): x_mm = x_mm.magnitude
             x_range = np.linspace(0, max(x_mm), 100) if len(x_mm) > 0 else []
-            from htbam_analysis.analysis.fit import mm_model
+            from mercury.analysis.fit import mm_model
             if not np.isnan(mean_kcat) and not np.isnan(mean_km) and len(x_range) > 0:
                 mean_kcat_m = mean_kcat.magnitude if hasattr(mean_kcat, "magnitude") else mean_kcat
                 mean_km_m = mean_km.magnitude if hasattr(mean_km, "magnitude") else mean_km
@@ -1007,7 +1007,7 @@ class HTBAMExperiment:
                 y_mean = mm_model(x_range, mean_kcat_m, mean_km_m)
                 y_up = mm_model(x_range, mean_kcat_m + std_kcat_m, mean_km_m)
                 y_down = mm_model(x_range, mean_kcat_m - std_kcat_m, mean_km_m)
-                ax_mm.fill_between(x_range, y_down, y_up, color="gray", alpha=0.3, label="Sample $\pm 1\sigma$ kcat")
+                ax_mm.fill_between(x_range, y_down, y_up, color="gray", alpha=0.3, label=r"Sample $\pm 1\sigma$ kcat")
                 ax_mm.plot(x_range, y_mean, "k--", label="Sample Fit")
             c_unit = f" ({conc.units:~})" if hasattr(conc, 'units') else ""
             v0_run = self.get_run("masked_V0_div_E_vs_conc")
@@ -1678,7 +1678,7 @@ class HTBAMExperiment:
         import matplotlib.pyplot as plt
         import matplotlib.gridspec as gridspec
         from tqdm import tqdm
-        from htbam_analysis.analysis.fit import binding_isotherm_model
+        from mercury.analysis.fit import binding_isotherm_model
 
         binding_raw = self.get_run(binding_raw_run)
         mf_fit = self.get_run(binding_fits_run)
