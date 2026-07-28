@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Image Stitching - Mercury Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+        <link href="../../css/custom.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Image Stitching";
+        var mkdocs_page_input_path = "guides/stitching.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Mercury Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Overview</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../quickstart/">Quickstart</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User Guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../processing/">Image Processing & Chips</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Image Stitching</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1-defining-stitching-settings">1. Defining Stitching Settings</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2-walking-stitching-directory-trees">2. Walking &amp; Stitching Directory Trees</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#runpack-raster-stitching">RunPack Raster Stitching</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#micro-manager-stack-stitching">Micro-Manager Stack Stitching</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3-image-background-subtraction">3. Image Background Subtraction</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../db_api/">Database API & Data I/O</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../analysis/">Analysis & Fitting</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/analysis/">mercury.analysis</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/db_api/">mercury.db_api</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/processing/">mercury.processing</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/stitching/">mercury.stitching</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/scripts/">mercury.scripts</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../cli/">CLI Reference</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Mercury Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">User Guides</li>
+      <li class="breadcrumb-item active">Image Stitching</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="image-stitching-guide">Image Stitching Guide</h1>
+<p>The <code>mercury.stitching</code> module provides tools for flat-field correcting, stitching, and background-subtracting rastered image tiles acquired via Micro-Manager or RunPack.</p>
+<hr />
+<h2 id="1-defining-stitching-settings">1. Defining Stitching Settings</h2>
+<p>Before stitching, define tile dimensions and optional flat-field correction images:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mercury.stitching</span><span class="w"> </span><span class="kn">import</span> <span class="n">rastering</span>
+
+<span class="c1"># Flat-field parameters: {channel: {exposure_ms: (dark_field, mean_intensity)}}</span>
+<span class="n">ff_params</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;4egfp&#39;</span><span class="p">:</span> <span class="p">{</span><span class="mi">500</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="mi">150</span><span class="p">,</span> <span class="mi">16665</span><span class="p">)}}</span>
+<span class="n">ff_paths</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;4egfp&#39;</span><span class="p">:</span> <span class="s1">&#39;/path/to/FF_eGFP_500ms.tif&#39;</span><span class="p">}</span>
+
+<span class="n">settings</span> <span class="o">=</span> <span class="n">rastering</span><span class="o">.</span><span class="n">StitchingSettings</span><span class="p">(</span>
+    <span class="n">ffPaths</span><span class="o">=</span><span class="n">ff_paths</span><span class="p">,</span>
+    <span class="n">ffParams</span><span class="o">=</span><span class="n">ff_params</span><span class="p">,</span>
+    <span class="n">setupNum</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">tileDim</span><span class="o">=</span><span class="mi">1024</span>
+<span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="2-walking-stitching-directory-trees">2. Walking &amp; Stitching Directory Trees</h2>
+<h3 id="runpack-raster-stitching">RunPack Raster Stitching</h3>
+<p>For flat rasters collected as single scans or kinetic series:</p>
+<div class="highlight"><pre><span></span><code><span class="n">overlap</span> <span class="o">=</span> <span class="mf">0.1</span>  <span class="c1"># Fractional tile overlap (0 to 1)</span>
+<span class="n">params</span> <span class="o">=</span> <span class="n">rastering</span><span class="o">.</span><span class="n">RasterParams</span><span class="p">(</span><span class="n">overlap</span><span class="o">=</span><span class="n">overlap</span><span class="p">,</span> <span class="n">autoFF</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Walk directory and stitch images</span>
+<span class="n">rastering</span><span class="o">.</span><span class="n">walkAndStitch</span><span class="p">(</span><span class="s1">&#39;/path/to/raw_images&#39;</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">stitchtype</span><span class="o">=</span><span class="s1">&#39;kinetic&#39;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="micro-manager-stack-stitching">Micro-Manager Stack Stitching</h3>
+<p>For <code>.ome.tif</code> Micro-Manager image stacks:</p>
+<div class="highlight"><pre><span></span><code><span class="n">channel_exposure_map</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;3-GFP-B&#39;</span><span class="p">:</span> <span class="mi">500</span><span class="p">,</span> <span class="s1">&#39;5------&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">}</span>
+<span class="n">channel_remap</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;3-GFP-B&#39;</span><span class="p">:</span> <span class="s1">&#39;eGFP&#39;</span><span class="p">,</span> <span class="s1">&#39;5------&#39;</span><span class="p">:</span> <span class="s1">&#39;Cy5&#39;</span><span class="p">}</span>
+
+<span class="n">params</span> <span class="o">=</span> <span class="n">rastering</span><span class="o">.</span><span class="n">RasterParams</span><span class="p">(</span><span class="n">overlap</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">autoFF</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">rastering</span><span class="o">.</span><span class="n">MMStitchStacks</span><span class="p">(</span>
+    <span class="n">root</span><span class="o">=</span><span class="s1">&#39;/path/to/stack_images&#39;</span><span class="p">,</span>
+    <span class="n">raster_params</span><span class="o">=</span><span class="n">params</span><span class="p">,</span>
+    <span class="n">channelExposureMap</span><span class="o">=</span><span class="n">channel_exposure_map</span><span class="p">,</span>
+    <span class="n">channelRemap</span><span class="o">=</span><span class="n">channel_remap</span>
+<span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="3-image-background-subtraction">3. Image Background Subtraction</h2>
+<p>Background subtraction is applied to full stitched composite images:</p>
+<div class="highlight"><pre><span></span><code><span class="n">bg</span> <span class="o">=</span> <span class="n">rastering</span><span class="o">.</span><span class="n">BackgroundImages</span><span class="p">()</span>
+
+<span class="c1"># Register reference background images</span>
+<span class="n">bg</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s1">&#39;/path/to/bg_device1.tif&#39;</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;d1&#39;</span><span class="p">,</span> <span class="n">channel</span><span class="o">=</span><span class="s1">&#39;eGFP&#39;</span><span class="p">,</span> <span class="n">exposure</span><span class="o">=</span><span class="mi">500</span><span class="p">)</span>
+
+<span class="c1"># Subtract background across target directories</span>
+<span class="n">bg</span><span class="o">.</span><span class="n">walkAndBGSubtract</span><span class="p">(</span><span class="n">targetRoot</span><span class="o">=</span><span class="s1">&#39;/path/to/stitched&#39;</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s1">&#39;d1&#39;</span><span class="p">,</span> <span class="n">channel</span><span class="o">=</span><span class="s1">&#39;eGFP&#39;</span><span class="p">)</span>
+</code></pre></div>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../processing/" class="btn btn-neutral float-left" title="Image Processing & Chips"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../db_api/" class="btn btn-neutral float-right" title="Database API & Data I/O">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../processing/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../db_api/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

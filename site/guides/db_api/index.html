@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Database API & Data I/O - Mercury Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+        <link href="../../css/custom.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Database API \u0026 Data I/O";
+        var mkdocs_page_input_path = "guides/db_api.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Mercury Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Overview</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../quickstart/">Quickstart</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User Guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../processing/">Image Processing & Chips</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../stitching/">Image Stitching</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Database API & Data I/O</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1-local-mercury-database-api-localmercurydbapi">1. Local Mercury Database API (LocalMercuryDBAPI)</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#initialization-data-ingestion">Initialization &amp; Data Ingestion</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2-2d-and-3d-data-representation">2. 2D and 3D Data Representation</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../analysis/">Analysis & Fitting</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/analysis/">mercury.analysis</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/db_api/">mercury.db_api</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/processing/">mercury.processing</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/stitching/">mercury.stitching</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/scripts/">mercury.scripts</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../cli/">CLI Reference</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Mercury Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">User Guides</li>
+      <li class="breadcrumb-item active">Database API & Data I/O</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="database-api-data-io-guide">Database API &amp; Data I/O Guide</h1>
+<p>The <code>mercury.db_api</code> module handles ingestion, structured storage, unit conversion, and retrieval for multi-dimensional assay data.</p>
+<hr />
+<h2 id="1-local-mercury-database-api-localmercurydbapi">1. Local Mercury Database API (<code>LocalMercuryDBAPI</code>)</h2>
+<p><code>LocalMercuryDBAPI</code> provides a flexible interface for loading combinations of:
+- <strong>Button Quant</strong>: Initial protein / antibody quantification
+- <strong>Standard Curves</strong>: Concentration vs. intensity calibration curves
+- <strong>Kinetic Assays</strong>: Time series fluorescence data
+- <strong>Binding Isotherms</strong>: Multi-concentration prey/bait ratios
+- <strong>Stability Data</strong>: Protein stability / denaturation metrics</p>
+<h3 id="initialization-data-ingestion">Initialization &amp; Data Ingestion</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mercury.db_api.mercury_db_api</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalMercuryDBAPI</span>
+
+<span class="n">db</span> <span class="o">=</span> <span class="n">LocalMercuryDBAPI</span><span class="p">()</span>
+
+<span class="c1"># Ingest quantified CSV datasets</span>
+<span class="n">db</span><span class="o">.</span><span class="n">load_button_quant</span><span class="p">(</span><span class="s1">&#39;data/button_quant.csv&#39;</span><span class="p">)</span>
+<span class="n">db</span><span class="o">.</span><span class="n">load_binding_data</span><span class="p">(</span><span class="s1">&#39;data/binding_isotherm.csv&#39;</span><span class="p">)</span>
+<span class="n">db</span><span class="o">.</span><span class="n">load_standard_curves</span><span class="p">(</span><span class="s1">&#39;data/standards.csv&#39;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="2-2d-and-3d-data-representation">2. 2D and 3D Data Representation</h2>
+<p>Mercury encapsulates multi-dimensional experimental arrays using dedicated data structures:</p>
+<ul>
+<li><strong><code>Data2D</code></strong>: Structured tabular data across chambers and single conditions/timepoints.</li>
+<li><strong><code>Data3D</code></strong>: Multi-axis tensor data across chambers, concentrations, and time/washes.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mercury.db_api.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">Data3D</span>
+
+<span class="c1"># Access binding ratios across concentrations and chambers</span>
+<span class="n">ratios</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">get_binding_ratios</span><span class="p">()</span> <span class="c1"># Returns Data3D instance</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">ratios</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+</code></pre></div>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../stitching/" class="btn btn-neutral float-left" title="Image Stitching"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../analysis/" class="btn btn-neutral float-right" title="Analysis & Fitting">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../stitching/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../analysis/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

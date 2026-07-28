@@ -120,16 +120,20 @@ def stitch_single_raster(
     stitched_image_path: Path,
     method: str = "cut",
 ) -> Tuple[bool, Path, str]:
-    """
-    Process a single raster group (directory + list of image paths).
-    
-    Args:
-        args: Tuple of (dir, raster_list, outdir, raster_params)
-    
-    Returns:
-        Tuple of (success: bool, output_file: Path, error_msg: str)
-    """
+    """Process and stitch a single raster group of image tiles into a composite TIF file.
 
+    Args:
+        raster (list of Path): List of input tile image file paths.
+        raster_params (RasterParams): Raster geometry and acquisition parameters.
+        stitched_image_path (Path): Output TIF file destination path.
+        method (str, optional): Stitching algorithm ('cut' or 'blend'). Default is 'cut'.
+
+    Returns:
+        tuple[bool, Path, str]: Tuple containing:
+            - bool: Success status flag.
+            - Path: Output stitched image file path.
+            - str: Error message string if failed, else None.
+    """
     n_raster = int(raster_params.dims[0] * raster_params.dims[1])
     assert len(raster) == n_raster
     
@@ -141,28 +145,41 @@ def stitch_single_raster(
     stitched_image = raster_obj.stitch(method=method)
     
     # Save the stitched image
-    io.imsave(stitched_image_path, stitched_image, check_contrast=False)#, plugin="tifffile"
+    io.imsave(stitched_image_path, stitched_image, check_contrast=False)
         
     return True, stitched_image_path, None
 
 
 class ImageStitcher:
+    """High-level workflow coordinator for finding tile rotations, overlaps, and stitching rasters.
+
+    Args:
+        root_path (str or Path): Experiment root directory containing `imaging.csv` and `raw_images/`.
+    """
 
     def __init__(
             self,
-            root_path,
+            root_path: Union[str, Path],
             ):
+        """Initializes the ImageStitcher with an experiment root path.
 
-        self.root_path = root_path
-        self._raw_images_path = root_path / 'raw_images'
-        self._stitched_images_path = root_path / 'stitched_images'
+        Args:
+            root_path (str or Path): Experiment root directory path.
+        """
+        self.root_path = Path(root_path) if isinstance(root_path, str) else root_path
+        self._raw_images_path = self.root_path / 'raw_images'
+        self._stitched_images_path = self.root_path / 'stitched_images'
 
         self.raster_data = self.load_raster_data()
         self.stitched_image_data = None
         self.setup = set(self.raster_data['setup'].tolist()).pop()
         
-    def load_raster_data(self):
+    def load_raster_data() -> pd.DataFrame:
+        """Loads and parses `imaging.csv` manifest data from root directory.
 
+        Returns:
+            pd.DataFrame: Formatted DataFrame of tile raster metadata.
+        """
         raster_data = pd.read_csv(self.root_path / 'imaging.csv')
     
         # make absolute image paths
@@ -184,9 +201,14 @@ class ImageStitcher:
         return raster_data
 
     def find_optimal_rotation(self, raster_path: Union[Path, str], max_samples: int = 5) -> float:
-        """
-        Automatically determine the optimal rotation for a given raster
-        by analyzing the grid angle of a few sample raw images.
+        """Determines the optimal tile rotation angle using Radon transform grid detection.
+
+        Args:
+            raster_path (Path or str): Path to raster directory.
+            max_samples (int, optional): Number of sample images to evaluate. Default is 5.
+
+        Returns:
+            float: Median detected rotation angle in degrees.
         """
         raster_path = Path(raster_path) if not isinstance(raster_path, Path) else raster_path
         mask = self.raster_data['image_path_parent'] == raster_path
@@ -233,9 +255,15 @@ class ImageStitcher:
         acqui_origin: Tuple[bool, bool] = (True, False),
         search_range: Tuple[float, float] = (-4.0, 4.0)
     ) -> float:
-        """
-        Automatically determine the optimal rotation for a given raster
-        by registering the overlapping boundary regions of adjacent tiles.
+        """Determines the optimal tile rotation angle by registering overlapping tile boundaries.
+
+        Args:
+            raster_path (Path or str): Path to raster directory.
+            acqui_origin (tuple[bool, bool], optional): Tile acquisition origin flags.
+            search_range (tuple[float, float], optional): (min_deg, max_deg) search range.
+
+        Returns:
+            float: Optimal rotation angle in degrees.
         """
         raster_path = Path(raster_path) if not isinstance(raster_path, Path) else raster_path
         mask = self.raster_data['image_path_parent'] == raster_path
@@ -274,7 +302,17 @@ class ImageStitcher:
         get_overlap_from: str = '*',
         rotation_method: str = "overlaps"
     ):
+        """Stitches all tile rasters listed in `imaging.csv` manifest.
 
+        Args:
+            rotation (float, optional): Fixed tile rotation angle in degrees.
+            get_rotation_from (str, optional): Pattern matching rasters for auto-rotation estimation.
+            acqui_origin (tuple[bool], optional): Acquisition origin tuple (e.g., (True, False)).
+            method (str, optional): Stitching algorithm ('cut' or 'blend'). Default is 'cut'.
+            overlap (float, optional): Tile overlap fraction (0 to 1).
+            get_overlap_from (str, optional): Pattern matching rasters for auto-overlap estimation.
+            rotation_method (str, optional): Auto-rotation method ('overlaps' or 'radon').
+        """
         assert isinstance(self.raster_data, pd.DataFrame), 'Raster data has not been set.'
 
         # TODO: make this not hard-coded
@@ -437,15 +475,14 @@ class ImageStitcher:
         acqui_origin: Tuple[bool, bool], 
         outdir: Path
         ):
-        """
-        Test stitching a specific raster with different overlap parameters.
+        """Test stitching a specific raster with different overlap parameters.
         
         Args:
-            raster_path: Path to the directory containing the raster images
-            overlaps: List of overlap fractions to test
-            rotation: Rotation angle to use
-            acqui_ori: Acquisition origin tuple (e.g., (True, False))
-            output_dir: Directory to save the stitched images
+            raster_path (Path): Path to the directory containing the raster images.
+            rotation (float): Rotation angle in degrees to use.
+            overlaps (list of float): List of overlap fractions to test.
+            acqui_origin (tuple[bool, bool]): Acquisition origin tuple (e.g., (True, False)).
+            outdir (Path): Output directory path to save test stitched images.
         """
         # Filter raster data for this specific raster
         raster_path = Path(raster_path) if not isinstance(raster_path, Path) else raster_path
@@ -490,7 +527,16 @@ class ImageStitcher:
                 print(f"Failed to stitch with overlap {overlap}: {error_msg}")
 
 
-def backgroud_subtract(background_image, target_image):
+def backgroud_subtract(background_image: np.ndarray, target_image: np.ndarray) -> np.ndarray:
+    """Performs pixel-wise background subtraction on target image arrays.
+
+    Args:
+        background_image (np.ndarray): Reference dark or background image array.
+        target_image (np.ndarray): Target raw or stitched image array.
+
+    Returns:
+        np.ndarray: Subtracted and clipped uint16 image array.
+    """
 
     # TODO: figure out why on earth this is hard-coded
     MAX_VALUE = 65535
@@ -502,17 +548,28 @@ def backgroud_subtract(background_image, target_image):
 
 
 class BackgroundSubtractor:
+    """Manages background image matching and subtraction across stitched image datasets.
 
-    def __init__(self, root_path):
+    Args:
+        root_path (str or Path): Experiment root directory path containing `stitched_images/`.
+    """
 
-        self.root_path = root_path
-        self._stitched_image_path = root_path / 'stitched_images'
-        self._bgsub_images_path = root_path / 'bgsub_images'
+    def __init__(self, root_path: Union[str, Path]):
+        """Initializes BackgroundSubtractor with experiment root directory path."""
+
+        self.root_path = Path(root_path) if isinstance(root_path, str) else root_path
+        self._stitched_image_path = self.root_path / 'stitched_images'
+        self._bgsub_images_path = self.root_path / 'bgsub_images'
 
         self.stitched_image_data = self.load_stitched_image_data()
         self.bgsub_data = None
 
-    def load_stitched_image_data(self):
+    def load_stitched_image_data(self) -> pd.DataFrame:
+        """Loads metadata manifest from `stitched_images/stitched_images.csv`.
+
+        Returns:
+            pd.DataFrame: Stitched images metadata DataFrame.
+        """
 
         stitched_image_data = pd.read_csv(self._stitched_image_path / 'stitched_images.csv')
 

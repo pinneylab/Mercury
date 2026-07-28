@@ -24,7 +24,19 @@ import matplotlib.pyplot as plt
 
 
 class MercuryExperiment:
+    """High-level analysis wrapper for managing, fitting, and visualizing assay datasets.
+
+    Connects to a Mercury database instance to retrieve run data, execute curve fitting
+    (e.g., initial rates, Michaelis-Menten kinetics, binding isotherms), transform variables,
+    and generate diagnostic summary plots.
+    """
+
     def __init__(self, db_connection: AbstractMercuryDBAPI):
+        """Initializes the MercuryExperiment instance with a database connection.
+
+        Args:
+            db_connection (AbstractMercuryDBAPI): An active database connection object.
+        """
         self._db_conn = db_connection
         print("\nConnected to database.")
         print("Experiment found with the following runs:")

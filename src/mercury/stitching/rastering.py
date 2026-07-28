@@ -13,18 +13,48 @@ from typing import Tuple
 
 
 def ff_subtract(i, ffi, ff_bval, ff_scale):
+    """Applies flat-field correction to an input image array.
+
+    Args:
+        i (np.ndarray): Target image array.
+        ffi (np.ndarray): Flat-field reference image array.
+        ff_bval (float or int): Dark field background value.
+        ff_scale (float or int): Scaling factor for normalization.
+
+    Returns:
+        np.ndarray: Flat-field corrected image array scaled to uint16.
+    """
     ff_result = np.subtract(i, ff_bval) / np.subtract(ffi, ff_bval) * ff_scale
-    # TODO figure out where these params are coming from
     result = np.clip(ff_result, 0, 65535).astype("uint16")
     return result
 
 
 def rotate_image(img, rotation_val) -> np.array:
+    """Rotates an image array by a specified angle in degrees.
+
+    Args:
+        img (np.ndarray): Input image array.
+        rotation_val (float): Angle of rotation in degrees.
+
+    Returns:
+        np.ndarray: Rotated uint16 image array.
+    """
     rotation_params = {"resize": False, "clip": True, "preserve_range": True}
     return transform.rotate(img, rotation_val, **rotation_params).astype("uint16")
 
 
 def find_imaging_csv(img_path: pathlib.Path) -> pathlib.Path:
+    """Traverses parent directories to locate the imaging.csv manifest file.
+
+    Args:
+        img_path (pathlib.Path): Path to an image file or subfolder.
+
+    Returns:
+        pathlib.Path: Path to discovered imaging.csv file.
+
+    Raises:
+        FileNotFoundError: If imaging.csv is not found in parent directories.
+    """
     for parent in img_path.resolve().parents:
         csv_path = parent / "imaging.csv"
         if csv_path.exists():
@@ -33,6 +63,18 @@ def find_imaging_csv(img_path: pathlib.Path) -> pathlib.Path:
 
 
 class RasterParams:
+    """Configuration parameters describing a single multi-tile image acquisition raster.
+
+    Args:
+        overlap (float): Fractional overlap between adjacent tiles (e.g. 0.1).
+        size (int): Tile width/height dimension in pixels.
+        acqui_ori (tuple[int, int]): Acquisition origin coordinates.
+        rotation (float): Pre-stitching rotation angle in degrees.
+        dims (tuple): Grid dimensions (rows, cols).
+        auto_ff (bool, optional): Flag to execute automatic flat-field correction. Default is True.
+        ff_type (str, optional): Flat-field algorithm type ('BaSiC' or 'custom'). Default is 'BaSiC'.
+        group_feature (int, optional): Feature value for grouping rasters. Default is 0.
+    """
     def __init__(
         self,
         overlap: float,
@@ -44,19 +86,7 @@ class RasterParams:
         ff_type: str = "BaSiC",
         group_feature=0,
     ):
-        """
-        Parameters describing a single image raster.
-
-        Arguments:
-            (float) overlap: overlap fraction (e.g., 0.1)
-            (float) rotation: pre-stitch rotation to perform (%)
-            (bool) auto_ff: flag to execute FF correction on stitch, if possible
-            (int | float | string) group_feature: feature value for RasterGroup
-
-        Returns:
-            None
-
-        """
+        """Initializes RasterParams instance."""
         # This can never be reached!
         # if self._root:
         #     self._parent = list(pathlib.Path(root).parents)[0]
@@ -144,20 +174,14 @@ class RasterParams:
 
 
 class Raster(ABC):
+    """Abstract base class representing a collection of tile image references for a single acquisition raster.
+
+    Args:
+        image_refs (list): Ordered list of tile image file paths.
+        params (RasterParams): Associated raster parameters.
+    """
     def __init__(self, image_refs: list, params: RasterParams):
-        """
-        A collection of images (or references) for one rastered image at one set of acquisition
-        parameters
-
-        Arguments:
-            (list) image_refs: an ordered list of rastered image paths
-            (RasterParams) params: rastered image parameters
-
-        Returns:
-            None
-
-
-        """
+        """Initializes Raster instance."""
         self._image_refs = image_refs
         self._params = params
         self._images = None
@@ -849,7 +873,14 @@ class Raster(ABC):
 
 
 class FlatRaster(Raster):
+    """Raster subclass for handling flat unstacked single-file tile images.
+
+    Args:
+        image_refs (list): List of tile image file paths.
+        params (RasterParams): Associated raster parameters.
+    """
     def __init__(self, image_refs, params):
+        """Initializes FlatRaster instance."""
         super().__init__(image_refs, params)
 
     def fetch_images(self):

@@ -17,6 +17,14 @@ import skimage
 
 
 class ChipImage:
+    """Represents a rastered composite chip image and its associated metadata and feature extraction methods.
+
+    Args:
+        device (Device): Microfluidic device metadata object.
+        raster (str or Path): File path of the rastered image.
+        corners (tuple or dict): Corner positions of the form ((ULx, ULy), (URx, URy), (LLx, LLy), (LRx, LRy)).
+        attrs (dict, optional): Arbitrary metadata attributes.
+    """
     stampWidth = 100
     # stampWidth = 60
 
@@ -379,28 +387,22 @@ class ChipImage:
 
 
 class Stamp:
-    # chamberrad = 16
+    """Cropped sub-image stamp containing feature data and ROI parameters for chamber/button detection.
+
+    Args:
+        img (np.ndarray): Input image array of stamp.
+        center (tuple): Stamp center coordinates.
+        slice (tuple): Slice bounding box tuple.
+        index (tuple): (row, col) grid index.
+        id (str or int): Feature identifier.
+    """
     chamberrad = 32
     outerchamberbound = 5
     circlePara1Index = 50
     circlePara2Index = 40
 
     def __init__(self, img, center, slice, index, id):
-        """
-        Constructor for a Stamp object, which contains feature data and parameters and permits
-        feature finding.
-
-        Arguments:
-            (np.ndarray) img:
-            (tuple) center
-            (tuple) slice
-            (tuple) index
-            (str | int) id:
-
-        Returns:
-            None
-
-        """
+        """Constructor for a Stamp object, which contains feature data and parameters."""
 
         self.data = img  # the actual stamp data
         self.index = index
@@ -818,22 +820,18 @@ class Stamp:
 
 
 class Chamber:
+    """Represents a microfluidic reaction chamber feature within a stamp.
+
+    Args:
+        stampdata (np.ndarray): Stamp image array.
+        disk (np.ndarray): Boolean mask array for chamber area.
+        center (tuple): (x, y) center coordinates.
+        radius (int): Chamber radius in pixels.
+        empty (bool, optional): Flag indicating an unassigned or empty chamber.
+    """
+
     def __init__(self, stampdata, disk, center, radius, empty=False):
-        """
-        Constructor for a Chamber object
-
-        Arguments:
-            (np.ndarray) stampdata: the original stamp data
-            (np.ndarray) disk: a boolean mask for the stampdata FALSE within the found chamber
-            (tuple) center: chamber center coordinates, with respect to stampdata coord. system
-            (int) radius: chamber radius
-            (bool) empty: flag for empty chamber
-
-        Returns:
-            None
-
-        """
-
+        """Constructor for a Chamber object."""
         self.blankFlag = empty
         self.stampdata = stampdata  # uint16 ndarray
         self.disk = disk  # a mask
@@ -843,31 +841,19 @@ class Chamber:
         self.summary = self.summarize()
 
     def get_disk(self):
-        """
-        Generates the masked array corresponding to the chamber.
-
-        Arguments:
-            None
+        """Generates the masked array corresponding to the chamber.
 
         Returns:
-            (np.ma) masked array of the stamp chamber
-
+            np.ma.MaskedArray: Masked array of the stamp chamber.
         """
-
         return ma.array(self.stampdata, mask=self.disk)
 
     def summarize(self):
-        """
-        Summarizes a chamber as a dictionary of paramters mapped from their descriptors
-
-        Arguments:
-            None
+        """Summarizes chamber parameters into a dictionary.
 
         Returns:
-            (dict) summary of chamber parameters
-
+            dict: Parameter names mapped to quantified intensity values and geometry.
         """
-
         features = [
             "median_chamber",
             "sum_chamber",
@@ -890,37 +876,33 @@ class Chamber:
 
     @classmethod
     def BlankChamber(cls):
-        """
-        Factory fresh empty chamber, hot off the press
+        """Factory constructor for creating a blank empty chamber instance.
+
+        Returns:
+            Chamber: Blank Chamber instance.
         """
         bc = cls(*([np.nan] * 4), **{"empty": True})
         return bc
 
 
 class Button:
+    """Represents a microfluidic surface button feature and surrounding background annulus.
+
+    Args:
+        stampdata (np.ndarray): Original stamp image array.
+        disk (np.ndarray): Boolean mask for button disk region.
+        annulus (np.ndarray): Boolean mask for surrounding background annulus region.
+        center (tuple): Center coordinates of button.
+        disk_radius (int): Button disk radius in pixels.
+        annulus_radii (tuple): (inner_radius, outer_radius) of background annulus.
+        empty (bool, optional): Flag indicating an empty button.
+    """
     localBG_Margin = 10
 
     def __init__(
         self, stampdata, disk, annulus, center, disk_radius, annulus_radii, empty=False
     ):
-        """
-        Constructor for a Button object
-
-        Arguments:
-            (np.ndarray) stampdata: the original stamp data
-            (np.ndarray) disk: a boolean mask for the stampdata FALSE within the found chamber
-            (np.ndarray) annulus: a boolean mask for the stampdata FALSE within the button annulus
-                (local background)
-            (tuple) center: chamber center coordinates, with respect to stampdata coord. system
-            (int) disk_radius: button radius
-            (tuple) annulus radii: inner and outer radii of the annulus (innerrad, outerrad)
-            (bool) empty: flag for empty button
-
-        Returns:
-            None
-
-        """
-
+        """Constructor for a Button object."""
         self.blankFlag = empty
         self.stampdata = stampdata  # uint16 ndarray
         self.disk = disk  # a mask
@@ -943,45 +925,27 @@ class Button:
         self.summary = self.summarize()
 
     def get_disk(self):
-        """
-        Generates the masked array corresponding to the button.
-
-        Arguments:
-            None
+        """Generates the masked array corresponding to the button disk.
 
         Returns:
-            (np.ma) masked array of the stamp button
-
+            np.ma.MaskedArray: Masked array of button disk.
         """
-
         return ma.array(self.stampdata, mask=self.disk)
 
     def get_annulus(self):
-        """
-        Generates the masked array corresponding to the annulus.
-
-        Arguments:
-            None
+        """Generates the masked array corresponding to the background annulus.
 
         Returns:
-            (np.ma) masked array of the stamp button annulus
-
+            np.ma.MaskedArray: Masked array of annulus.
         """
-
         return ma.array(self.stampdata, mask=self.annulus)
 
     def summarize(self):
-        """
-        Summarizes a button as a dictionary of paramters mapped from their descriptors
-
-        Arguments:
-            None
+        """Summarizes button and local background metrics into a dictionary.
 
         Returns:
-            (dict) summary of chamber parameters
-
+            dict: Summary metrics for button disk and background annulus.
         """
-
         features_disk = [
             "median_button",
             "summed_button",
@@ -1043,6 +1007,11 @@ class Button:
 
     @classmethod
     def BlankButton(cls):
+        """Factory constructor for creating a blank empty button instance.
+
+        Returns:
+            Button: Blank Button instance.
+        """
         bb = cls(*([np.nan] * 6), **{"empty": True})
         return bb
 

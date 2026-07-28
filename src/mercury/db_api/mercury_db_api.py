@@ -14,22 +14,17 @@ from mercury.db_api.io import verify_file_exists, load_run_from_csv, load_button
 from mercury.db_api.units import units
 
 class AbstractMercuryDBAPI(ABC):
+    """Abstract base class defining the Mercury Database API interface."""
     def __init__(self):
+        """Initializes the abstract database connection."""
         pass
 
-    # @abstractmethod
-    # def get_standard_data(self, standard_name: str) -> Tuple[List[float], np.ndarray]:
-    #     raise NotImplementedError
-
-    # @abstractmethod
-    # def get_run_assay_data(self, run_name: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    #     raise NotImplementedError
-    
-    # @abstractmethod
-    # def create_analysis(self, run_name: str):
-    #     raise NotImplementedError
-
 class LocalMercuryDBAPI(AbstractMercuryDBAPI):
+    """In-memory database API for managing and querying Mercury assay datasets.
+
+    Manages multi-dimensional dataset structures (Data4D, Data3D, Data2D) loaded from CSV files
+    for kinetics, binding isotherms, standard curves, and button quantification.
+    """
 
     def __init__(
         self,
@@ -46,6 +41,25 @@ class LocalMercuryDBAPI(AbstractMercuryDBAPI):
         time_units: Optional[pint.Unit] = None,
         button_quant_data_path: Optional[str] = None,
     ):
+        """Initializes LocalMercuryDBAPI instance.
+
+        Supports legacy positional keyword initialization or clean zero-argument initialization
+        followed by explicit `load_run()` calls.
+
+        Args:
+            standard_curve_data_path (str, optional): CSV file path for standard curve data.
+            standard_name (str, optional): Run identifier for standard curve data.
+            standard_substrate (str, optional): Substrate name for standard curve.
+            standard_units (pint.Unit, optional): Concentration units for standard curve.
+            standard_concentration_col (str, optional): CSV column name containing concentrations.
+            kinetic_data_path (str, optional): CSV file path for kinetic assay data.
+            kinetic_name (str, optional): Run identifier for kinetic assay.
+            kinetic_substrate (str, optional): Substrate name for kinetic assay.
+            kinetic_units (pint.Unit, optional): Concentration units for kinetic assay.
+            kinetic_concentration_col (str, optional): CSV column name for kinetic concentrations.
+            time_units (pint.Unit, optional): Time units for kinetic assay.
+            button_quant_data_path (str, optional): CSV file path for button quantification.
+        """
         super().__init__()
         self._init_json_dict()
 
@@ -92,9 +106,23 @@ class LocalMercuryDBAPI(AbstractMercuryDBAPI):
         post_wash_prey_type: str = None,
         post_wash_bait_type: str = None,
     ) -> None:
-        '''
-        Load a run from CSV and add it to the database.
-        '''
+        """Load an assay dataset from CSV and ingest it into the local database.
+
+        Args:
+            run_name (str): Identifier name to assign to the ingested run.
+            csv_path (str): File path to input CSV dataset.
+            run_type (Literal['kinetics', 'binding', 'button_quant']): Type of assay data contained in CSV.
+            conc_unit (pint.Unit, optional): Concentration units (e.g. uM).
+            time_unit (pint.Unit, optional): Time units (e.g. s).
+            concentration_col (str, optional): CSV column name containing concentration values.
+            signal_col (str, optional): CSV column name containing raw signal intensity.
+            image_type_col (str, optional): CSV column name specifying image type metadata.
+            post_wash_prey_type (str, optional): Image type descriptor for post-wash prey fluorescence.
+            post_wash_bait_type (str, optional): Image type descriptor for post-wash bait fluorescence.
+
+        Raises:
+            MercuryDBException: If the file does not exist or CSV parsing fails.
+        """
         verify_file_exists(csv_path)
 
         if run_type in ('kinetics', 'binding'):

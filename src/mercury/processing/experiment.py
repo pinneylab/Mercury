@@ -1,13 +1,7 @@
 # title             : experiment.py
-# description       :
+# description       : Experiment, Device, and DataHandler utilities for image processing.
 # authors           : Daniel Mokhtari
 # credits           : Craig Markin
-# date              : 20180615
-# version update    : 20180615
-# version           : 0.1.0
-# usage             : With permission from DM
-# python_version    : 3.7
-
 
 import json
 import numpy as np
@@ -17,7 +11,15 @@ from typing import Union, Tuple, List
 from collections import namedtuple
 
 
-def read_pinlist(pl):
+def read_pinlist(pl: pd.DataFrame) -> pd.DataFrame:
+    """Parses and indexes a microfluidic pinlist DataFrame by (x, y) coordinates.
+
+    Args:
+        pl (pd.DataFrame): Input pinlist DataFrame containing an 'Indices' column.
+
+    Returns:
+        pd.DataFrame: Formatted DataFrame sorted and indexed by (x, y) pin coordinates.
+    """
     pl["Indices"] = pl.Indices.apply(eval)
     pl["x"] = pl.Indices.apply(lambda x: x[0])
     pl["y"] = pl.Indices.apply(lambda x: x[1])
@@ -25,8 +27,15 @@ def read_pinlist(pl):
     return sorted_pinlist
 
 
-def make_dummy_pinlist(block_descriptions: dict):
+def make_dummy_pinlist(block_descriptions: dict) -> pd.DataFrame:
+    """Generates a synthetic pinlist DataFrame based on block descriptions.
 
+    Args:
+        block_descriptions (dict): Mapping of block number to mutant identifier.
+
+    Returns:
+        pd.DataFrame: Sorted and indexed dummy pinlist DataFrame.
+    """
     def get_block(c):
         return ((c // 8) + 1)
 
@@ -45,8 +54,16 @@ def make_dummy_pinlist(block_descriptions: dict):
 
 
 class Device:
+    """Represents a physical microfluidic chip device, layout, and pinlist map."""
 
     def __init__(self, setup: str, dname: str, dims: Tuple[int, int] = (32, 56)):
+        """Initializes a microfluidic Device instance.
+
+        Args:
+            setup (str): Rig or setup identifier string.
+            dname (str): Device name identifier.
+            dims (tuple[int, int], optional): Chip dimensions (x, y) in chambers. Default is (32, 56).
+        """
         self.setup = setup
         self.dname = dname
         self.dims = namedtuple("ChipDims", ["x", "y"])(*dims)
@@ -56,7 +73,12 @@ class Device:
         return "{}, {}, {}".format(self.setup, self.dname, self.dims)
 
     def set_pinlist(self, pinlist_path: Union[str, Path] = None, block_descriptions: dict = None):
+        """Loads and assigns a pinlist mapping to the device.
 
+        Args:
+            pinlist_path (str or Path, optional): File path to input CSV pinlist.
+            block_descriptions (dict, optional): Block description dict for dummy pinlist generation.
+        """
         if pinlist_path:
             pinlist = read_pinlist(pd.read_csv(pinlist_path))
 
@@ -64,24 +86,26 @@ class Device:
             pinlist = make_dummy_pinlist(block_descriptions)
 
         self.pinlist = pinlist
-
         return
 
 
 class Experiment:
+    """Manages multi-device processing experiments and associated imaging CSV manifests."""
 
     def __init__(self, root: Union[str, Path]):
+        """Initializes an Experiment given an experiment root directory.
 
+        Args:
+            root (str or Path): Path to experiment root directory containing imaging.csv.
+        """
         root = Path(root) if not isinstance(root, Path) else root
         self.root = root
         self.devices = {}
 
         self.image_df = self._load_imaging_data()
         self.stitched_image_df = None
-        
 
     def _load_imaging_data(self):
-        
         path = self.root / 'imaging.csv'
         assert path.exists()
 
@@ -89,15 +113,24 @@ class Experiment:
         image_df.sort_values(by=['image_path_parent', 'raster_col_index', 'raster_row_index'], inplace=True)
 
         return image_df
-    
 
     def add_device(self, device: Device):
+        """Registers a microfluidic device with the experiment.
+
+        Args:
+            device (Device): Device instance to attach.
+        """
         self.devices[device.dname] = device
 
 
-def series_to_dataframe(series_dict):
-    """
-    Recursively flattens a nested series dictionary into a Pandas DataFrame.
+def series_to_dataframe(series_dict: dict) -> pd.DataFrame:
+    """Recursively flattens a nested series dictionary into a Pandas DataFrame.
+
+    Args:
+        series_dict (dict): Nested series dictionary structure.
+
+    Returns:
+        pd.DataFrame: Flattened DataFrame containing image metadata records.
     """
     rows = []
 
@@ -167,19 +200,22 @@ def series_to_dataframe(series_dict):
 
 
 class DataHandler:
-    
-    def __init__(
-            self, 
-            root: Union[str, Path]):
+    """Manages raw/background-subtracted images and JSON series metadata index files."""
 
+    def __init__(self, root: Union[str, Path]):
+        """Initializes DataHandler for an experiment root directory.
+
+        Args:
+            root (str or Path): Path to experiment root directory.
+        """
         self._root = Path(root) if isinstance(root, str) else root
         assert self._root.exists(), 'root path: {} does not exist'.format(self._root)
 
         self._raw_images = self._root / 'raw_images'
         assert self._raw_images.exists(), 'raw_images: {} does not exist.'.format(self._raw_images)
 
-        self._bsgub_images = root / 'bgsub_images'
-        assert self._bsgub_images.exists(), 'bgsub_images: {} does not exist.'.format(self._bgsub_images)
+        self._bsgub_images = self._root / 'bgsub_images'
+        assert self._bsgub_images.exists(), 'bgsub_images: {} does not exist.'.format(self._bsgub_images)
 
         self.image_metadata = self.load_image_metadata(self._bsgub_images / 'bgsub_images.csv')
         self.series_index_metadata = self.load_series_metadata(self._root / 'series_index.json')
@@ -195,14 +231,29 @@ class DataHandler:
         for image in self.image_metadata[~series_mask]['image_identifier']:
             print(image)
 
-    def load_image_metadata(self, image_metadata_path: Union[str, Path]):
-        image_metadata =  pd.read_csv(image_metadata_path)
+    def load_image_metadata(self, image_metadata_path: Union[str, Path]) -> pd.DataFrame:
+        """Loads image metadata from CSV into a DataFrame.
+
+        Args:
+            image_metadata_path (str or Path): Path to bgsub_images.csv file.
+
+        Returns:
+            pd.DataFrame: Loaded image metadata DataFrame.
+        """
+        image_metadata = pd.read_csv(image_metadata_path)
         image_metadata['image_path'] = image_metadata['image_path'].apply(lambda f: self._bsgub_images / Path(f))
         image_metadata['image_identifier'] = image_metadata['image_path'].apply(lambda f: f.with_suffix('').name)
         return image_metadata
 
-    def load_series_metadata(self, series_metadata_path: Union[str, Path]):
+    def load_series_metadata(self, series_metadata_path: Union[str, Path]) -> dict:
+        """Loads nested JSON series index metadata into a dictionary of DataFrames.
 
+        Args:
+            series_metadata_path (str or Path): Path to series_index.json file.
+
+        Returns:
+            dict: Mapping of series identifier to flattened metadata DataFrame.
+        """
         with open(series_metadata_path, 'r') as f:
             series_index = json.load(f)
 
@@ -216,11 +267,18 @@ class DataHandler:
             df['identifier'] = df['identifier'].apply(lambda f: self._bsgub_images / Path(*Path(f).parts[1:]).with_suffix('.tif'))
 
             series_metadata[identifier] = df
-            
+
         return series_metadata
 
-    def get_images(self, identifiers: Union[List[str], str]):
+    def get_images(self, identifiers: Union[List[str], str]) -> pd.DataFrame:
+        """Retrieves image metadata DataFrames for specified series or image identifiers.
 
+        Args:
+            identifiers (str or list of str): Image or series identifiers to fetch.
+
+        Returns:
+            pd.DataFrame: Merged image metadata DataFrame.
+        """
         if not isinstance(identifiers, list):
             identifiers = [identifiers]
 
@@ -239,21 +297,17 @@ class DataHandler:
         return pd.concat(image_data)
 
     def _get_images_by_series_id(self, series_identifier: str):
-
         series_df = self.series_index_metadata[series_identifier].copy()
         series_df.sort_values(by='identifier', inplace=True)
         series_mask = self.image_metadata['image_path'].isin(series_df['identifier'])
-        
+
         image_df = self.image_metadata[series_mask].copy()
-        
         image_df.sort_values(by='image_path', inplace=True)
 
         merged = pd.merge(series_df, image_df, left_on='identifier', right_on='image_path')
-
         return merged
 
     def _get_images_by_image_id(self, image_identifier: str):
         mask = self.image_metadata['image_identifier'] == image_identifier
-        image_df = self.image_metadata.copy()[mask]        
+        image_df = self.image_metadata.copy()[mask]
         return image_df
-    
