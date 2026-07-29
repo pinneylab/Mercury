@@ -1,9 +1,13 @@
 [tool.poetry]
-name = "mercury"
-version = "2.0.0"
+name = "mercury-kinetics"
+version = "2.0.0a1"
 description = ""
 authors = ["Nicholas-Freitas <nicholas.freitas@ucsf.edu>", "duncan-muir <muir.duncan@gmail.com>", "jzhang1198 <jonathan.zhang@ucsf.edu>"]
 readme = "README.md"
+
+packages = [
+    { include = "mercury", from = "src" }
+]
 
 include = [
   { path = "src/mercury/db_api/units/*.txt", format = ["sdist", "wheel"] }
