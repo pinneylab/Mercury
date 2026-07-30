@@ -1,12 +1,16 @@
 [tool.poetry]
-name = "htbam-analysis"
-version = "1.3.6"
+name = "mercury-kinetics"
+version = "2.0.0a1"
 description = ""
-authors = ["Nicholas-Freitas <nicholas.freitas@ucsf.edu>", "duncan-muir <muir.duncan@gmail.com>"]
+authors = ["Nicholas-Freitas <nicholas.freitas@ucsf.edu>", "duncan-muir <muir.duncan@gmail.com>", "jzhang1198 <jonathan.zhang@ucsf.edu>"]
 readme = "README.md"
 
+packages = [
+    { include = "mercury", from = "src" }
+]
+
 include = [
-  { path = "src/htbam_analysis/db_api/units/*.txt", format = ["sdist", "wheel"] }
+  { path = "src/mercury/db_api/units/*.txt", format = ["sdist", "wheel"] }
 ]
 
 [tool.poetry.dependencies]
@@ -30,9 +34,17 @@ pint = ">=0.24,<1"
 scikit-learn = ">=1.4.0"
 jupyter = ">=1.0.0"
 anywidget = ">=0.9.0"
+
 [tool.poetry.scripts]
-pick-corners = "htbam_analysis.scripts.run_corner_picker:main"
+pick-corners = "mercury.scripts.run_corner_picker:main"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+markers = [
+    "e2e: End-to-end tests for processing and analysis",
+    "slow: Tests that take a long time to run (e.g. full raw image processing)"
+]

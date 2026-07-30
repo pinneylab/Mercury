@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
-from htbam_analysis.analysis.transform import transform_data
-from htbam_analysis.db_api.data import Data2D, IndepVars, Meta
-from htbam_analysis.db_api.units.units import units
+from mercury.analysis.transform import transform_data
+from mercury.db_api.data import Data2D, IndepVars, Meta
+from mercury.db_api.units.units import units
 
 
 class TestTransformData(unittest.TestCase):

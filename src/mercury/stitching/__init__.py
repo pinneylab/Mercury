@@ -1,0 +1,690 @@
+# -*- coding: utf-8 -*-
+
+"""Top-level package for stitching."""
+
+from mercury.stitching import rastering
+
+__author__ = """Jonathan Zhang"""
+__email__ = ""
+__version__ = "1.3.0"
+
+import yaml
+import shutil
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
+from skimage import io, filters, transform
+from pathlib import Path
+from typing import Tuple, Union, List, Optional
+import matplotlib.pyplot as plt
+import warnings
+import fnmatch
+
+# load config with defaults, if exists
+config_path = Path(__file__).parent / "config.yaml"
+if config_path.exists():
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+
+
+def _get_grid_angle(image_path: Path, debug=False) -> float:
+    """Helper function to find the grid rotation angle of a single raw image."""
+    img = io.imread(image_path)
+    
+    # We only care about the center part to speed up and avoid edge effects
+    h, w = img.shape
+    crop = img[h//4:3*h//4, w//4:3*w//4]
+    
+    # Normalize the crop to handle different exposures
+    crop = crop.astype(float)
+    ptp = crop.max() - crop.min()
+    
+    if ptp < 1000:
+        raise ValueError("Image lacks sufficient contrast/features (basically flat)")
+        
+    # make a plot of the raw crop
+    if debug:
+        plt.figure()
+        plt.imshow(crop)
+        plt.title("Raw Crop")
+        plt.show()
+    
+    crop = (crop - crop.min()) / ptp
+        
+    ## We can consider doing edge detection on smoothed crop to suppress high-frequency noise
+    ## Instead, to filter out images that are nearly all noise, we're requiring an absolute contrast of 1000 above.
+    #blurred = filters.gaussian(crop, sigma=5.0)
+    #edges = filters.sobel(blurred)
+    edges = filters.sobel(crop)
+
+    # make a plot of the edges
+    if debug:
+        plt.figure()
+        plt.imshow(edges)
+        plt.title("Edges")
+        plt.show()
+
+    # Does our image have structured edges? Or is it mostly featureless/noise?
+    # Here, we check that at least 1% of the image has edges
+    if np.mean(edges > 0.05) < 0.01:
+        raise ValueError("No edges detected in image")
+    
+    # Test angles from -5 to 5 degrees
+    angles = np.linspace(-5, 5, 200, endpoint=False)
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", 
+            category=UserWarning, 
+            message="Radon transform: image must be zero outside the reconstruction circle"
+        )
+        sinogram = transform.radon(edges, theta=angles, circle=True)
+    
+    variances = np.var(sinogram, axis=0)
+
+    # # Plot sinogram:
+    # if debug:
+    #     plt.figure()
+    #     plt.imshow(sinogram, extent=[angles.min(), angles.max(), 0, sinogram.shape[0]], aspect="auto")
+    #     plt.title("Sinogram")
+    #     plt.xlabel("Angle (degrees)")
+    #     plt.ylabel("Projection")
+    #     plt.show()
+    
+    # Check if a clear dominant grid line angle was found
+    peak_prominence = np.max(variances) / (np.median(variances) + 1e-8)
+    if peak_prominence < 1.1:
+        raise ValueError(f"No distinct grid angle detected (prominence: {peak_prominence:.3f})")
+
+    # Make a plot of prominance vs angle
+    if debug:
+        plt.figure()
+        plt.plot(angles, variances)
+        plt.xlabel("Angle (degrees)")
+        plt.ylabel("Prominence")
+        plt.title("Prominence vs Angle")
+        plt.show()
+        
+    best_angle = angles[np.argmax(variances)]
+
+    if best_angle < -4.9 or best_angle > 4.9:
+        raise ValueError(f"Failed to find a valid rotation angle between -5, 5 degrees. This could be because the real rotation is too large, or because auto-rotation finding failed on your images.")
+    
+    # Return negative angle because of rotation sign convention
+    return -best_angle
+
+
+def stitch_single_raster(
+    raster: List[Path],
+    raster_params: rastering.RasterParams,
+    stitched_image_path: Path,
+    method: str = "cut",
+) -> Tuple[bool, Path, str]:
+    """Process and stitch a single raster group of image tiles into a composite TIF file.
+
+    Args:
+        raster (list of Path): List of input tile image file paths.
+        raster_params (RasterParams): Raster geometry and acquisition parameters.
+        stitched_image_path (Path): Output TIF file destination path.
+        method (str, optional): Stitching algorithm ('cut' or 'blend'). Default is 'cut'.
+
+    Returns:
+        tuple[bool, Path, str]: Tuple containing:
+            - bool: Success status flag.
+            - Path: Output stitched image file path.
+            - str: Error message string if failed, else None.
+    """
+    n_raster = int(raster_params.dims[0] * raster_params.dims[1])
+    assert len(raster) == n_raster
+    
+    # Create the raster and stitch
+    raster_obj = rastering.FlatRaster(
+        image_refs=raster,
+        params=raster_params
+    )
+    stitched_image = raster_obj.stitch(method=method)
+    
+    # Save the stitched image
+    io.imsave(stitched_image_path, stitched_image, check_contrast=False)
+        
+    return True, stitched_image_path, None
+
+
+class ImageStitcher:
+    """High-level workflow coordinator for finding tile rotations, overlaps, and stitching rasters.
+
+    Args:
+        root_path (str or Path): Experiment root directory containing `imaging.csv` and `raw_images/`.
+    """
+
+    def __init__(
+            self,
+            root_path: Union[str, Path],
+            ):
+        """Initializes the ImageStitcher with an experiment root path.
+
+        Args:
+            root_path (str or Path): Experiment root directory path.
+        """
+        self.root_path = Path(root_path) if isinstance(root_path, str) else root_path
+        self._raw_images_path = self.root_path / 'raw_images'
+        self._stitched_images_path = self.root_path / 'stitched_images'
+
+        self.raster_data = self.load_raster_data()
+        self.stitched_image_data = None
+        self.setup = set(self.raster_data['setup'].tolist()).pop()
+        
+    def load_raster_data() -> pd.DataFrame:
+        """Loads and parses `imaging.csv` manifest data from root directory.
+
+        Returns:
+            pd.DataFrame: Formatted DataFrame of tile raster metadata.
+        """
+        raster_data = pd.read_csv(self.root_path / 'imaging.csv')
+    
+        # make absolute image paths
+        raster_data['image_path'] = raster_data['image_path'].apply(Path)
+        raster_data['image_path'] = raster_data['image_path'].apply(lambda p: self.root_path / p)
+        raster_data['image_path_parent'] = raster_data['image_path'].apply(lambda p: p.parent)
+
+        # force integer type for width and height of rasters
+        raster_data['raster_width'] = raster_data['raster_width'].astype(int)
+        raster_data['raster_height'] = raster_data['raster_height'].astype(int)
+
+        # configure flat-field correction (default is False)
+        # TODO: add methods to help override defaults
+        raster_data['apply_ff_correction'] = [False] * len(raster_data)
+
+        # sort
+        raster_data.sort_values(by=['image_path_parent', 'raster_col_index', 'raster_row_index'], inplace=True)
+
+        return raster_data
+
+    def find_optimal_rotation(self, raster_path: Union[Path, str], max_samples: int = 5) -> float:
+        """Determines the optimal tile rotation angle using Radon transform grid detection.
+
+        Args:
+            raster_path (Path or str): Path to raster directory.
+            max_samples (int, optional): Number of sample images to evaluate. Default is 5.
+
+        Returns:
+            float: Median detected rotation angle in degrees.
+        """
+        raster_path = Path(raster_path) if not isinstance(raster_path, Path) else raster_path
+        mask = self.raster_data['image_path_parent'] == raster_path
+        df = self.raster_data[mask]
+        
+        if df.empty:
+            raise ValueError(f"No raster data found for {raster_path}")
+            
+        # Try to sample from the center of the raster to avoid edge artifacts
+        try:
+            width = df['raster_width'].iloc[0]
+            height = df['raster_height'].iloc[0]
+            center_df = df[
+                (df['raster_col_index'] > 0) & (df['raster_col_index'] < width - 1) &
+                (df['raster_row_index'] > 0) & (df['raster_row_index'] < height - 1)
+            ]
+            if not center_df.empty:
+                # Use all center images, shuffled
+                sample_images = center_df['image_path'].sample(frac=1.0, random_state=42).to_list()
+            else:
+                sample_images = df['image_path'].sample(frac=1.0, random_state=42).to_list()
+        except KeyError:
+            # Fallback if raster_col_index or width aren't present
+            sample_images = df['image_path'].sample(frac=1.0, random_state=42).to_list()
+        
+        angles = []
+        for img_path in sample_images:
+            try:
+                angle = _get_grid_angle(img_path)
+                angles.append(angle)
+                if len(angles) >= max_samples:
+                    break
+            except Exception as e:
+                print(f"Warning: Failed to compute grid angle for {img_path.name}: {e}")
+                
+        if not angles:
+            raise ValueError(f"Failed to auto-detect rotation from any sample in {raster_path}")
+            
+        return float(np.median(angles))
+
+    def find_optimal_rotation_from_overlaps(
+        self,
+        raster_path: Union[Path, str],
+        acqui_origin: Tuple[bool, bool] = (True, False),
+        search_range: Tuple[float, float] = (-4.0, 4.0)
+    ) -> float:
+        """Determines the optimal tile rotation angle by registering overlapping tile boundaries.
+
+        Args:
+            raster_path (Path or str): Path to raster directory.
+            acqui_origin (tuple[bool, bool], optional): Tile acquisition origin flags.
+            search_range (tuple[float, float], optional): (min_deg, max_deg) search range.
+
+        Returns:
+            float: Optimal rotation angle in degrees.
+        """
+        raster_path = Path(raster_path) if not isinstance(raster_path, Path) else raster_path
+        mask = self.raster_data['image_path_parent'] == raster_path
+        df = self.raster_data[mask]
+        
+        if df.empty:
+            raise ValueError(f"No raster data found for {raster_path}")
+            
+        overlap_csv, width, height, ff_correction = df[['raster_overlap', 'raster_width', 'raster_height', 'apply_ff_correction']].iloc[0]
+        width, height = int(width), int(height)
+        raster = df['image_path'].to_list()
+        
+        # Use the overlap from the csv, or fallback to 0.1
+        overlap = overlap_csv if (0.0 < overlap_csv < 1.0) else 0.1
+        
+        # Instantiate a temporary raster with rotation=0.0 to load raw images
+        temp_params = rastering.RasterParams(
+            overlap=overlap,
+            size=1600,
+            acqui_ori=acqui_origin,
+            rotation=0.0,
+            dims=(width, height),
+            auto_ff=ff_correction,
+            ff_type='BaSiC'
+        )
+        
+        raster_obj = rastering.FlatRaster(image_refs=raster, params=temp_params)
+        return raster_obj.detect_rotation(search_range=search_range)
+
+    def stitch_images(self, 
+        rotation: Optional[float] = None, 
+        get_rotation_from: str = '*', 
+        acqui_origin: Tuple[bool] = (True, False),
+        method: str = "cut",
+        overlap: Optional[float] = 0.1,
+        get_overlap_from: str = '*',
+        rotation_method: str = "overlaps"
+    ):
+        """Stitches all tile rasters listed in `imaging.csv` manifest.
+
+        Args:
+            rotation (float, optional): Fixed tile rotation angle in degrees.
+            get_rotation_from (str, optional): Pattern matching rasters for auto-rotation estimation.
+            acqui_origin (tuple[bool], optional): Acquisition origin tuple (e.g., (True, False)).
+            method (str, optional): Stitching algorithm ('cut' or 'blend'). Default is 'cut'.
+            overlap (float, optional): Tile overlap fraction (0 to 1).
+            get_overlap_from (str, optional): Pattern matching rasters for auto-overlap estimation.
+            rotation_method (str, optional): Auto-rotation method ('overlaps' or 'radon').
+        """
+        assert isinstance(self.raster_data, pd.DataFrame), 'Raster data has not been set.'
+
+        # TODO: make this not hard-coded
+        SIZE = 1600
+        raster_headers = ['image_path', 'image_path_parent', 'raster_index', 'x', 'y', 'z', 'frame_time', 'raster_width', 'raster_height', 'raster_overlap', 'raster_row_index', 'raster_col_index']
+        stitched_image_data = []
+
+        grouped = self.raster_data.groupby('image_path_parent')
+
+        if rotation is None:
+            matched_group_paths = [
+                gp for gp in grouped.groups.keys()
+                if fnmatch.fnmatch(gp.name, get_rotation_from) or 
+                   fnmatch.fnmatch(str(gp.relative_to(self._raw_images_path)), get_rotation_from)
+            ]
+            if not matched_group_paths:
+                raise ValueError(f"No raster groups matched the pattern '{get_rotation_from}'. Available groups: {[gp.name for gp in grouped.groups.keys()]}")
+            
+            detected_rotations = []
+            for group_path in matched_group_paths:
+                print(f"Auto-detecting optimal rotation from raster: {group_path} using method: {rotation_method}")
+                try:
+                    if rotation_method == "overlaps":
+                        val = self.find_optimal_rotation_from_overlaps(group_path, acqui_origin=acqui_origin)
+                    elif rotation_method == "radon":
+                        val = self.find_optimal_rotation(group_path)
+                    else:
+                        raise ValueError(f"Unknown rotation method: {rotation_method}")
+                    print(f"Detected rotation for {group_path.name}: {val:.3f} degrees")
+                    detected_rotations.append(val)
+                except ValueError as e:
+                    print(f"Warning: Failed to auto-detect rotation for {group_path.name}: {e}")
+            
+            if not detected_rotations:
+                raise ValueError(f"Failed to auto-detect rotation from any matching raster group (pattern: '{get_rotation_from}'). \n You may want to manually provide a rotation angle by setting the 'rotation' parameter in stitch_images().")
+                
+            rotation = float(np.median(detected_rotations))
+            print(f"Using optimal rotation: {rotation:.3f} degrees from matching rasters")
+
+        # Automatically calculate overlap if None is passed
+        if overlap is None:
+            matched_overlap_paths = [
+                gp for gp in grouped.groups.keys()
+                if fnmatch.fnmatch(gp.name, get_overlap_from) or 
+                   fnmatch.fnmatch(str(gp.relative_to(self._raw_images_path)), get_overlap_from)
+            ]
+            if not matched_overlap_paths:
+                raise ValueError(f"No raster groups matched the pattern '{get_overlap_from}' for overlap detection. Available groups: {[gp.name for gp in grouped.groups.keys()]}")
+            
+            detected_overlaps = []
+            for group_path in matched_overlap_paths:
+                print(f"Auto-detecting optimal overlap from raster: {group_path}")
+                try:
+                    df = grouped.get_group(group_path)
+                    overlap_csv, width, height, ff_correction = df[['raster_overlap', 'raster_width', 'raster_height', 'apply_ff_correction']].iloc[0]
+                    width, height = int(width), int(height)
+                    raster = df['image_path'].to_list()
+                    # Use a baseline guess of 0.1 to extract overlap strips
+                    temp_params = rastering.RasterParams(0.1, size=SIZE, acqui_ori=acqui_origin, rotation=rotation, dims=(width, height), auto_ff=ff_correction, ff_type='BaSiC')
+                    raster_obj = rastering.FlatRaster(image_refs=raster, params=temp_params)
+                    raster_obj.fetch_images()
+                    val = raster_obj.detect_overlap()
+                    print(f"Detected overlap for {group_path.name}: {val:.4f}")
+                    detected_overlaps.append(val)
+                except Exception as e:
+                    print(f"Warning: Failed to auto-detect overlap for {group_path.name}: {e}")
+            
+            if not detected_overlaps:
+                raise ValueError(f"Failed to auto-detect overlap from any matching raster group (pattern: '{get_overlap_from}').")
+                
+            overlap = float(np.median(detected_overlaps))
+            print(f"Using optimal overlap: {overlap:.4f} from matching rasters")
+
+        success_counter = 0
+        for image_parent, df in tqdm(grouped, desc='Stitching images.'):
+
+            try:
+                # format outpath and make sure directory to write it to exists
+                outpath = self._stitched_images_path / image_parent.relative_to(self._raw_images_path).with_suffix('.tif')
+                outpath.parent.mkdir(parents=True, exist_ok=True)
+
+                # extract params, stitch image
+                overlap_csv, width, height, ff_correction = df[['raster_overlap', 'raster_width', 'raster_height', 'apply_ff_correction']].iloc[0]
+                width, height = int(width), int(height)
+                raster = df['image_path'].to_list()
+                params = rastering.RasterParams(overlap, size=SIZE, acqui_ori=acqui_origin, rotation=rotation, dims=(width, height), auto_ff=ff_correction, ff_type='BaSiC') 
+                stitch_single_raster(raster, params, outpath, method=method)
+
+                # carry over metadata
+                row = df.drop_duplicates(subset=['image_path_parent']).drop(columns=raster_headers)
+                row['image_path'] = outpath.relative_to(self._stitched_images_path)
+                stitched_image_data.append(row)
+                success_counter += 1
+
+            except Exception as e:
+                print('Failed stitching of {}: {}'.format(image_parent, e))
+
+        print('Successfully stitched {} / {} images.'.format(success_counter, len(grouped)))
+
+        self.stitched_image_data = pd.concat(stitched_image_data).reset_index(drop=True)
+        self.stitched_image_data.to_csv(self._stitched_images_path / 'stitched_images.csv', index=False)
+
+    def test_stitching_rotations(self, raster_path: Path, rotations: List[float], acqui_origin: Tuple[bool, bool], outdir: Path):
+        """
+        Test stitching a specific raster with different rotation parameters.
+        
+        Args:
+            raster_path: Path to the directory containing the raster images
+            rotations: List of rotation angles to test
+            acqui_ori: Acquisition origin tuple (e.g., (True, False))
+            output_dir: Directory to save the stitched images
+        """
+        # Filter raster data for this specific raster
+        raster_path = Path(raster_path) if not isinstance(raster_path, Path) else raster_path
+        mask = self.raster_data['image_path_parent'] == raster_path
+        df = self.raster_data[mask]
+        
+        if df.empty:
+            raise ValueError(f"No raster data found for {raster_path}")
+        
+        # Extract parameters
+        overlap, width, height, ff_correction = df[['raster_overlap', 'raster_width', 'raster_height', 'apply_ff_correction']].iloc[0]
+        width, height = int(width), int(height)
+        raster = df['image_path'].to_list()
+        
+        # Hard-coded size (consistent with stitch_images method)
+        SIZE = 1600
+        
+        # Ensure output directory exists
+        outdir.mkdir(parents=True, exist_ok=True)
+        
+        # Stitch for each rotation
+        for rotation in rotations:
+            params = rastering.RasterParams(
+                overlap, 
+                size=SIZE, 
+                acqui_ori=acqui_origin, 
+                rotation=rotation, 
+                dims=(width, height), 
+                auto_ff=ff_correction, 
+                ff_type='BaSiC'
+            )
+            
+            # Create output path with rotation in filename
+            outpath = outdir / f"stitched_rotation_{rotation}.tif"
+            
+            # Stitch and save
+            success, stitched_path, error_msg = stitch_single_raster(raster, params, outpath)
+            
+            if success:
+                print(f"Successfully stitched with rotation {rotation}: {stitched_path}")
+            else:
+                print(f"Failed to stitch with rotation {rotation}: {error_msg}")
+
+    def test_stitching_overlaps(
+        self, 
+        raster_path: Path, 
+        rotation: float,
+        overlaps: List[float], 
+        acqui_origin: Tuple[bool, bool], 
+        outdir: Path
+        ):
+        """Test stitching a specific raster with different overlap parameters.
+        
+        Args:
+            raster_path (Path): Path to the directory containing the raster images.
+            rotation (float): Rotation angle in degrees to use.
+            overlaps (list of float): List of overlap fractions to test.
+            acqui_origin (tuple[bool, bool]): Acquisition origin tuple (e.g., (True, False)).
+            outdir (Path): Output directory path to save test stitched images.
+        """
+        # Filter raster data for this specific raster
+        raster_path = Path(raster_path) if not isinstance(raster_path, Path) else raster_path
+        mask = self.raster_data['image_path_parent'] == raster_path
+        df = self.raster_data[mask]
+        
+        if df.empty:
+            raise ValueError(f"No raster data found for {raster_path}")
+        
+        # Extract parameters
+        width, height, ff_correction = df[['raster_width', 'raster_height', 'apply_ff_correction']].iloc[0]
+        width, height = int(width), int(height)
+        raster = df['image_path'].to_list()
+        
+        # Hard-coded size (consistent with stitch_images method)
+        SIZE = 1600
+        
+        # Ensure output directory exists
+        outdir.mkdir(parents=True, exist_ok=True)
+        
+        # Stitch for each rotation
+        for overlap in overlaps:
+            params = rastering.RasterParams(
+                overlap, 
+                size=SIZE, 
+                acqui_ori=acqui_origin, 
+                rotation=rotation, 
+                dims=(width, height), 
+                auto_ff=ff_correction, 
+                ff_type='BaSiC'
+            )
+            
+            # Create output path with rotation in filename
+            outpath = outdir / f"stitched_overlap_{overlap}.tif"
+            
+            # Stitch and save
+            success, stitched_path, error_msg = stitch_single_raster(raster, params, outpath)
+            
+            if success:
+                print(f"Successfully stitched with overlap {overlap}: {stitched_path}")
+            else:
+                print(f"Failed to stitch with overlap {overlap}: {error_msg}")
+
+
+def backgroud_subtract(background_image: np.ndarray, target_image: np.ndarray) -> np.ndarray:
+    """Performs pixel-wise background subtraction on target image arrays.
+
+    Args:
+        background_image (np.ndarray): Reference dark or background image array.
+        target_image (np.ndarray): Target raw or stitched image array.
+
+    Returns:
+        np.ndarray: Subtracted and clipped uint16 image array.
+    """
+
+    # TODO: figure out why on earth this is hard-coded
+    MAX_VALUE = 65535
+
+    subtracted = np.subtract(target_image.astype("float"), background_image.astype("float"))
+    subtracted_clipped = np.clip(subtracted, 0, MAX_VALUE).astype("uint16")
+    
+    return subtracted_clipped
+
+
+class BackgroundSubtractor:
+    """Manages background image matching and subtraction across stitched image datasets.
+
+    Args:
+        root_path (str or Path): Experiment root directory path containing `stitched_images/`.
+    """
+
+    def __init__(self, root_path: Union[str, Path]):
+        """Initializes BackgroundSubtractor with experiment root directory path."""
+
+        self.root_path = Path(root_path) if isinstance(root_path, str) else root_path
+        self._stitched_image_path = self.root_path / 'stitched_images'
+        self._bgsub_images_path = self.root_path / 'bgsub_images'
+
+        self.stitched_image_data = self.load_stitched_image_data()
+        self.bgsub_data = None
+
+    def load_stitched_image_data(self) -> pd.DataFrame:
+        """Loads metadata manifest from `stitched_images/stitched_images.csv`.
+
+        Returns:
+            pd.DataFrame: Stitched images metadata DataFrame.
+        """
+
+        stitched_image_data = pd.read_csv(self._stitched_image_path / 'stitched_images.csv')
+
+        # make absolute image paths
+        stitched_image_data['image_path'] = stitched_image_data['image_path'].apply(Path)
+        stitched_image_data['image_path'] = stitched_image_data['image_path'].apply(lambda p: self._stitched_image_path / p)
+
+        return stitched_image_data
+    
+    def _background_image_check(self, background_images: List[Union[Path, str]]):
+
+        reformatted = []
+        for image in background_images:
+            image = Path(image) if not isinstance(image, Path) else image
+            assert image.exists(), 'Background image not found.'
+
+            mask = self.stitched_image_data['image_path'] == image
+            n_images = mask.sum()
+
+            if n_images < 1:
+                raise Exception('{} not found in `stitched_images.csv`.'.format(image))
+            
+            if n_images > 1:
+                raise Exception('Duplicate entries for {} found in `stitched_images.csv`.'.format(image))
+            
+            reformatted.append(image)
+            
+        return reformatted
+    
+    def subtract(
+            self, 
+            background_images: List[Union[Path, str]],
+            settings_to_match: List[str] = ['temp', 'hum','setup', 'dname', 'lightsource', 'channel', 'exposure', 'camera_mode', 'binning', 'nosepiece'],
+            verbose: bool = True,
+            dry_run: bool = False
+            ):
+
+        # input sanity check
+        background_images = self._background_image_check(background_images)
+
+        bgsub_data = []
+        grouped = self.stitched_image_data.groupby(by=settings_to_match, dropna=False)
+
+        for settings, group in grouped:
+
+            # region background image sanity checks
+
+            print('Attempting background subtracting on images with the following settings:')
+            print(' | '.join(['{}: {}'.format(setting, value) for setting, value in zip(settings_to_match, settings)]))
+
+            # make a target df
+            background_image = None
+            group['background_image'] = [background_image] * len(group)
+
+            # check if a unique background image can be found
+            background_mask = group['image_path'].isin(background_images)
+    
+            if sum(background_mask) == 0:
+                print('No background image found. Subtracting with zero array.')
+
+            else:
+                # grab background image (should just be one row)
+                background_image_path = group[background_mask].iloc[0]['image_path']
+                background_image = io.imread(background_image_path)
+                print('Using {} as background image'.format(background_image_path))
+
+                # update dataframe
+                group = group.copy() # to stop pandas from complaining 
+                group['background_image'] = [background_image_path] * len(group)
+                group = group[~background_mask]
+
+            # endregion
+
+            success_mask = np.ones(len(group), dtype=bool)
+            for i in tqdm(range(len(group)), desc='Running background subtraction.'):
+
+                target_image_path = group['image_path'].iloc[i]
+                outfile = self._bgsub_images_path / target_image_path.relative_to(self._stitched_image_path)
+                outfile.parent.mkdir(parents=True, exist_ok=True)
+
+                if not dry_run:
+
+                    if isinstance(background_image, np.ndarray):
+            
+                        try: 
+                            # subtract and save
+                            target_image = io.imread(target_image_path)
+                            subtracted_image = backgroud_subtract(background_image, target_image)
+                            io.imsave(outfile, subtracted_image, check_contrast=False)#, plugin="tifffile"
+
+                        except Exception as e:
+                            # "subtract" a zero array
+                            # or in other words, just copy target image
+                            success_mask[i] = False
+                            shutil.copy(target_image_path, outfile)
+                            if verbose:
+                                print(f"Error background subtracting {target_image_path}: {e}")
+                            
+                    else:
+                        # "subtract" a zero array
+                        # or in other words, just copy target image
+                        success_mask[i] = False
+                        shutil.copy(target_image_path, outfile)   
+                             
+            print("{successes} / {total} images were successfully background subtracted".format(successes=(success_mask).sum(), total=len(success_mask)))
+            print()
+            # update failure rows
+            group.loc[~success_mask, 'column_name'] = None
+            bgsub_data.append(group)
+
+        if not dry_run:
+
+            # format and save the background subtraction dataframe
+            self.bgsub_data = pd.concat(bgsub_data, ignore_index=True)
+            self.bgsub_data['image_path'] = self.bgsub_data['image_path'].apply(lambda f: f.relative_to(self._stitched_image_path))
+            self.bgsub_data['background_image'] = self.bgsub_data['background_image'].apply(lambda f: None if not f else f.relative_to(self._stitched_image_path))
+            self.bgsub_data.to_csv(self._bgsub_images_path / 'bgsub_images.csv', index=False)
+

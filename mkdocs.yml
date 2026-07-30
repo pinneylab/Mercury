@@ -1,0 +1,45 @@
+site_name: Mercury Documentation
+
+theme:
+  name: readthedocs
+  features:
+    - navigation.tabs
+    - navigation.top
+    - search.highlight
+    - content.code.annotate
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: true
+            show_if_no_docstring: false
+            docstring_style: google
+            allow_inspection: true
+
+extra_css: 
+  - css/custom.css
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+nav:
+  - Overview: index.md
+  - Quickstart: quickstart.md
+  - User Guides:
+      - Image Processing & Chips: guides/processing.md
+      - Image Stitching: guides/stitching.md
+      - Database API & Data I/O: guides/db_api.md
+      - Analysis & Fitting: guides/analysis.md
+  - API Reference:
+      - mercury.analysis: api/analysis.md
+      - mercury.db_api: api/db_api.md
+      - mercury.processing: api/processing.md
+      - mercury.stitching: api/stitching.md
+      - mercury.scripts: api/scripts.md
+  - CLI Reference: cli.md

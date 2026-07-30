@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""mercury.db_api Testing module"""
+"""Top-level package for mercury analysis code"""
 
 __author__ = """Duncan Muir"""
 __email__ = "duncan.muir@ucsf.edu"

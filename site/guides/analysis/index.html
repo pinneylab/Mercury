@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Analysis & Fitting - Mercury Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+        <link href="../../css/custom.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Analysis \u0026 Fitting";
+        var mkdocs_page_input_path = "guides/analysis.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Mercury Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Overview</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../quickstart/">Quickstart</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">User Guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../processing/">Image Processing & Chips</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../stitching/">Image Stitching</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../db_api/">Database API & Data I/O</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Analysis & Fitting</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1-mercuryexperiment-wrapper">1. MercuryExperiment Wrapper</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2-fitting-binding-isotherms">2. Fitting Binding Isotherms</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3-exporting-subplots-summary-plots">3. Exporting Subplots &amp; Summary Plots</a>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/analysis/">mercury.analysis</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/db_api/">mercury.db_api</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/processing/">mercury.processing</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/stitching/">mercury.stitching</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/scripts/">mercury.scripts</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../cli/">CLI Reference</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Mercury Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">User Guides</li>
+      <li class="breadcrumb-item active">Analysis & Fitting</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="analysis-fitting-guide">Analysis &amp; Fitting Guide</h1>
+<p>The <code>mercury.analysis</code> subpackage provides tools for fitting kinetic rates, Michaelis-Menten constants, binding isotherms, filtering data, and generating diagnostic plots.</p>
+<hr />
+<h2 id="1-mercuryexperiment-wrapper">1. MercuryExperiment Wrapper</h2>
+<p><code>MercuryExperiment</code> brings together database entries, curve fitting routines, and plot export methods:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.experiment</span><span class="w"> </span><span class="kn">import</span> <span class="n">MercuryExperiment</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mercury.db_api.mercury_db_api</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalMercuryDBAPI</span>
+
+<span class="n">db</span> <span class="o">=</span> <span class="n">LocalMercuryDBAPI</span><span class="p">()</span>
+<span class="n">db</span><span class="o">.</span><span class="n">load_binding_data</span><span class="p">(</span><span class="s1">&#39;data/binding.csv&#39;</span><span class="p">)</span>
+
+<span class="n">exp</span> <span class="o">=</span> <span class="n">MercuryExperiment</span><span class="p">(</span><span class="n">db_api</span><span class="o">=</span><span class="n">db</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="2-fitting-binding-isotherms">2. Fitting Binding Isotherms</h2>
+<p>Fit binding isotherms ($K_d$ and $R_{max}$) to chamber or sample data:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.fit</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_binding_isotherm</span>
+
+<span class="c1"># Fit binding curves across concentrations</span>
+<span class="n">fit_results</span> <span class="o">=</span> <span class="n">exp</span><span class="o">.</span><span class="n">fit_binding_isotherms</span><span class="p">(</span>
+    <span class="n">tight_binders</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;sample_A&#39;</span><span class="p">,</span> <span class="s1">&#39;sample_B&#39;</span><span class="p">],</span>  <span class="c1"># Fixed R_max reference samples</span>
+    <span class="n">fixed_rmax</span><span class="o">=</span><span class="kc">None</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">fit_results</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
+</code></pre></div>
+<hr />
+<h2 id="3-exporting-subplots-summary-plots">3. Exporting Subplots &amp; Summary Plots</h2>
+<p>Generate diagnostic plots per chamber and per sample:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Export binding isotherm plots for each sample</span>
+<span class="n">exp</span><span class="o">.</span><span class="n">export_binding_subplots_by_sample</span><span class="p">(</span><span class="n">output_dir</span><span class="o">=</span><span class="s1">&#39;plots/binding_by_sample&#39;</span><span class="p">)</span>
+
+<span class="c1"># Export summary data tables</span>
+<span class="n">exp</span><span class="o">.</span><span class="n">export_binding_sample_data</span><span class="p">(</span><span class="s1">&#39;output/binding_sample_summary.csv&#39;</span><span class="p">)</span>
+<span class="n">exp</span><span class="o">.</span><span class="n">export_binding_chamber_data</span><span class="p">(</span><span class="s1">&#39;output/binding_chamber_summary.csv&#39;</span><span class="p">)</span>
+</code></pre></div>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../db_api/" class="btn btn-neutral float-left" title="Database API & Data I/O"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../api/analysis/" class="btn btn-neutral float-right" title="mercury.analysis">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../db_api/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../../api/analysis/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
