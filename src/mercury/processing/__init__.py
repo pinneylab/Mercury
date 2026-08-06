@@ -48,10 +48,35 @@ class Processor:
             chip_image.findChambers(coerce_center=coerce_chamber_center)
             chip_image.findButtons()
 
-    def _save_summary_image_if_needed(self, chip_image: chip.ChipImage, summary_image_path: Union[str, Path]):
-        """Save summary image if path is provided."""
-        if summary_image_path:
-            skimage.io.imsave(summary_image_path, chip_image.summary_image(stamptype=self.features))
+    def _save_summary_image(
+        self,
+        chip_image: chip.ChipImage,
+        image: Union[Path, str],
+        *,
+        as_ubyte: bool = False,
+        compress: bool = False,
+    ):
+        """Save annotated summary image for debugging/review.
+
+        Args:
+            chip_image: Processed chip image to summarize.
+            image: Source image path (used to mirror relative layout under summary_image_dir).
+            as_ubyte: If True, convert to uint8 before saving.
+            compress: If True and the output is TIFF, write with zlib compression.
+        """
+        image = Path(image) if not isinstance(image, Path) else image
+        outpath = self.summary_image_dir / image.relative_to(self.experiment.root)
+        outpath.parent.mkdir(parents=True, exist_ok=True)
+
+        summary_image = chip_image.summary_image(stamptype=self.features)
+        if as_ubyte:
+            summary_image = skimage.img_as_ubyte(summary_image)
+
+        save_kwargs = {'check_contrast': False}
+        if compress and outpath.suffix.lower() in {'.tif', '.tiff'}:
+            save_kwargs['compression'] = 'zlib'
+
+        skimage.io.imsave(outpath, summary_image, **save_kwargs)
 
     def set_corners(self, dname: str, corners: List[Tuple]):
         assert dname in self.experiment.devices, '{} not found in experiment.'.format(dname)
@@ -71,7 +96,9 @@ class Processor:
         self, 
         image: Union[Path, str], 
         save_summary_images: bool = True,
-        coerce_chamber_center: bool = False
+        coerce_chamber_center: bool = False,
+        as_ubyte: bool = False,
+        compress: bool = False,
     ):
         """Set reference image for a device."""
 
@@ -97,22 +124,29 @@ class Processor:
         self._update_reference_image(dname, chip_image)
 
         if save_summary_images:
-            outpath = self.summary_image_dir / image.relative_to(self.experiment.root)
-            outpath.parent.mkdir(parents=True, exist_ok=True)
-            skimage.io.imsave(outpath, chip_image.summary_image(stamptype=self.features))
+            self._save_summary_image(
+                chip_image, image, as_ubyte=as_ubyte, compress=compress
+            )
 
     def process(
         self, 
         *, 
         use_reference: bool = False, 
         save_summary_images: bool = True,
-        coerce_chamber_center: bool = False, 
+        coerce_chamber_center: bool = False,
+        as_ubyte: bool = False,
+        compress: bool = False,
         **kwargs
     ):
         """High-level dispatcher that handles the mutual exclusivity logic."""
         
         if use_reference:
-            return self._process_from_reference(save_summary_images=save_summary_images, **kwargs)
+            return self._process_from_reference(
+                save_summary_images=save_summary_images,
+                as_ubyte=as_ubyte,
+                compress=compress,
+                **kwargs,
+            )
         
         else:
 
@@ -120,12 +154,20 @@ class Processor:
             cornerless_devices = set(self.image_data['dname'][no_corners_mask].to_list())
             assert len(cornerless_devices) == 0, 'ERROR: the following devices have no corners set: ' + ', '.join(cornerless_devices)
 
-            return self._process_manually(coerce_chamber_center=coerce_chamber_center, save_summary_images=save_summary_images, **kwargs)
+            return self._process_manually(
+                coerce_chamber_center=coerce_chamber_center,
+                save_summary_images=save_summary_images,
+                as_ubyte=as_ubyte,
+                compress=compress,
+                **kwargs,
+            )
         
     def _process_manually(
         self, 
         save_summary_images: bool = False,
-        coerce_chamber_center: bool = False
+        coerce_chamber_center: bool = False,
+        as_ubyte: bool = False,
+        compress: bool = False,
     ):
         """Process images with manually provided corners."""
         data = []
@@ -142,15 +184,17 @@ class Processor:
             data.append(merged)
             
             if save_summary_images:
-                outpath = self.summary_image_dir / image.relative_to(self.experiment.root)
-                outpath.parent.mkdir(parents=True, exist_ok=True)
-                skimage.io.imsave(outpath, chip_image.summary_image(stamptype=self.features))
+                self._save_summary_image(
+                    chip_image, image, as_ubyte=as_ubyte, compress=compress
+                )
         
         return pd.concat(data, ignore_index=False)
 
     def _process_from_reference(
         self, 
-        save_summary_images: bool = True
+        save_summary_images: bool = True,
+        as_ubyte: bool = False,
+        compress: bool = False,
     ):
         """Process images by mapping from reference images."""
 
@@ -173,33 +217,8 @@ class Processor:
             data.append(merged)
             
             if save_summary_images:
-                outpath = self.summary_image_dir / image.relative_to(self.experiment.root)
-                outpath.parent.mkdir(parents=True, exist_ok=True)
-                skimage.io.imsave(outpath, chip_image.summary_image(stamptype=self.features))
+                self._save_summary_image(
+                    chip_image, image, as_ubyte=as_ubyte, compress=compress
+                )
 
         return pd.concat(data, ignore_index=False)
-
-    def _save_summary_image(
-        self, 
-        summary_image_dir: Union[Path, str], 
-        image_path: Union[Path, str], 
-        chip_image: chip.ChipImage, 
-        features: str
-    ):
-        """Save summary images for debugging/review."""
-        summary_image_dir = Path(summary_image_dir) if not isinstance(summary_image_dir, Path) else summary_image_dir
-        image_path = Path(image_path) if not isinstance(image_path, Path) else image_path
-        summary_image_dir.mkdir(parents=True, exist_ok=True)  # Fixed: removed redundant argument
-
-        base_name = image_path.with_suffix('').name
-        
-        if features in ('button', 'all'):
-            summary_image = chip_image.summary_image(stamptype='button')
-            path = summary_image_dir / f'{base_name}_ButtonSummaryImage.tif'
-            skimage.io.imsave(path, summary_image)
-
-        if features in ('chamber', 'all'):
-            summary_image = chip_image.summary_image(stamptype='chamber')
-            path = summary_image_dir / f'{base_name}_ChamberSummaryImage.tif'
-            skimage.io.imsave(path, summary_image)
-
