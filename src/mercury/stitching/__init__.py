@@ -656,7 +656,67 @@ def backgroud_subtract(background_image: np.ndarray, target_image: np.ndarray) -
     
     return subtracted_clipped
 
-# TODO: implement image streaming / parallelism here as well
+
+# Per-process cache so each pool worker loads a given background once.
+_bg_image_cache: dict = {}
+
+
+def _get_cached_background(background_path: str) -> np.ndarray:
+    """Load a background image, caching within the current process."""
+    cached = _bg_image_cache.get(background_path)
+    if cached is None:
+        cached = io.imread(background_path)
+        _bg_image_cache[background_path] = cached
+    return cached
+
+
+def subtract_single_image(
+    background_path: Optional[str],
+    target_path: str,
+    outfile: str,
+) -> Tuple[bool, Optional[str]]:
+    """Subtract (or copy) a single stitched image to ``outfile``.
+
+    Args:
+        background_path: Absolute path to the background TIFF, or ``None`` to
+            copy the target unchanged (zero-array fallback).
+        target_path: Absolute path to the target TIFF.
+        outfile: Absolute path for the output TIFF.
+
+    Returns:
+        ``(True, None)`` on success, or ``(False, error_message)`` on failure.
+        Failed runs do not write ``outfile``.
+    """
+    try:
+        outfile_path = Path(outfile)
+        outfile_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if background_path is None:
+            shutil.copy(target_path, outfile_path)
+            return True, None
+
+        background_image = _get_cached_background(background_path)
+        target_image = io.imread(target_path)
+        subtracted_image = backgroud_subtract(background_image, target_image)
+        io.imsave(outfile_path, subtracted_image, check_contrast=False)
+        return True, None
+    except Exception as e:
+        return False, str(e)
+
+
+def _estimate_bgsub_bytes_per_worker(sample_image_path: Path) -> int:
+    """Estimate peak RSS per bg-sub worker from on-disk sample size.
+
+    Covers background + target uint16 buffers plus float scratch (~6x file size).
+    """
+    try:
+        file_size = sample_image_path.stat().st_size
+    except OSError:
+        file_size = 0
+    # Floor so auto-sizing still works for tiny / missing samples.
+    return max(file_size * 6, 16 * 1024 * 1024)
+
+
 class BackgroundSubtractor:
     """Manages background image matching and subtraction across stitched image datasets.
 
@@ -714,8 +774,21 @@ class BackgroundSubtractor:
             background_images: List[Union[Path, str]],
             settings_to_match: List[str] = ['temp', 'hum','setup', 'dname', 'lightsource', 'channel', 'exposure', 'camera_mode', 'binning', 'nosepiece'],
             verbose: bool = True,
-            dry_run: bool = False
+            dry_run: bool = False,
+            n_workers: Optional[int] = None,
             ):
+        """Match backgrounds by acquisition settings and subtract across the dataset.
+
+        Args:
+            background_images: Absolute paths to stitched background TIFFs listed in
+                ``stitched_images.csv``.
+            settings_to_match: Metadata columns used to group images that share a
+                background.
+            verbose: Print per-image errors on failure.
+            dry_run: Build metadata without reading or writing images.
+            n_workers: Process pool size. ``None`` auto-sizes from CPU and ~50% RAM;
+                ``1`` forces serial subtraction.
+        """
 
         # input sanity check
         background_images = self._background_image_check(background_images)
@@ -730,64 +803,85 @@ class BackgroundSubtractor:
             print('Attempting background subtracting on images with the following settings:')
             print(' | '.join(['{}: {}'.format(setting, value) for setting, value in zip(settings_to_match, settings)]))
 
-            # make a target df
-            background_image = None
-            group['background_image'] = [background_image] * len(group)
-
-            # check if a unique background image can be found
+            group = group.copy()
+            background_path: Optional[Path] = None
             background_mask = group['image_path'].isin(background_images)
-    
+
             if sum(background_mask) == 0:
                 print('No background image found. Subtracting with zero array.')
-
+                group['background_image'] = None
             else:
-                # grab background image (should just be one row)
-                background_image_path = group[background_mask].iloc[0]['image_path']
-                background_image = io.imread(background_image_path)
-                print('Using {} as background image'.format(background_image_path))
-
-                # update dataframe
-                group = group.copy() # to stop pandas from complaining 
-                group['background_image'] = [background_image_path] * len(group)
+                background_path = group[background_mask].iloc[0]['image_path']
+                print('Using {} as background image'.format(background_path))
+                group['background_image'] = background_path
                 group = group[~background_mask]
+
+            group = group.reset_index(drop=True)
+            group['success'] = True
 
             # endregion
 
-            success_mask = np.ones(len(group), dtype=bool)
-            for i in tqdm(range(len(group)), desc='Running background subtraction.'):
+            if len(group) == 0:
+                print('0 / 0 images were successfully background subtracted')
+                print()
+                bgsub_data.append(group)
+                continue
 
+            jobs = []
+            for i in range(len(group)):
                 target_image_path = group['image_path'].iloc[i]
                 outfile = self._bgsub_images_path / target_image_path.relative_to(self._stitched_image_path)
                 outfile.parent.mkdir(parents=True, exist_ok=True)
+                bg_str = str(background_path) if background_path is not None else None
+                jobs.append((i, bg_str, str(target_image_path), str(outfile)))
 
-                if not dry_run:
+            bytes_per_worker = _estimate_bgsub_bytes_per_worker(group['image_path'].iloc[0])
+            if n_workers is None:
+                workers = _auto_n_workers(bytes_per_worker, n_jobs=len(jobs))
+            else:
+                workers = max(1, int(n_workers))
+                avail = _available_ram_bytes()
+                if avail is not None and workers * bytes_per_worker > avail * 0.5:
+                    print(
+                        f"Warning: n_workers={workers} may exceed ~50% available RAM "
+                        f"(est. {workers * bytes_per_worker / (1024**2):.0f} MB vs "
+                        f"{0.5 * avail / (1024**2):.0f} MB budget)."
+                    )
 
-                    if isinstance(background_image, np.ndarray):
-            
-                        try: 
-                            # subtract and save
-                            target_image = io.imread(target_image_path)
-                            subtracted_image = backgroud_subtract(background_image, target_image)
-                            io.imsave(outfile, subtracted_image, check_contrast=False)#, plugin="tifffile"
-
+            if dry_run:
+                pass
+            elif workers <= 1:
+                for i, bg_str, target_str, outfile_str in tqdm(jobs, desc='Running background subtraction.'):
+                    ok, err = subtract_single_image(bg_str, target_str, outfile_str)
+                    if not ok:
+                        group.loc[i, 'success'] = False
+                        if verbose:
+                            print(f"Error background subtracting {target_str}: {err}")
+            else:
+                print(
+                    f"Background subtracting {len(jobs)} images with n_workers={workers} "
+                    f"(est. {bytes_per_worker / (1024**2):.1f} MB/worker)."
+                )
+                with ProcessPoolExecutor(max_workers=workers) as executor:
+                    future_map = {
+                        executor.submit(subtract_single_image, bg_str, target_str, outfile_str): i
+                        for i, bg_str, target_str, outfile_str in jobs
+                    }
+                    for fut in tqdm(as_completed(future_map), total=len(future_map), desc='Running background subtraction.'):
+                        i = future_map[fut]
+                        try:
+                            ok, err = fut.result()
                         except Exception as e:
-                            # "subtract" a zero array
-                            # or in other words, just copy target image
-                            success_mask[i] = False
-                            shutil.copy(target_image_path, outfile)
+                            ok, err = False, str(e)
+                        if not ok:
+                            group.loc[i, 'success'] = False
                             if verbose:
-                                print(f"Error background subtracting {target_image_path}: {e}")
-                            
-                    else:
-                        # "subtract" a zero array
-                        # or in other words, just copy target image
-                        success_mask[i] = False
-                        shutil.copy(target_image_path, outfile)   
-                             
-            print("{successes} / {total} images were successfully background subtracted".format(successes=(success_mask).sum(), total=len(success_mask)))
+                                print(f"Error background subtracting {jobs[i][2]}: {err}")
+
+            print("{successes} / {total} images were successfully background subtracted".format(successes=int(group['success'].sum()), total=len(group)))
             print()
             # update failure rows
-            group.loc[~success_mask, 'background_image'] = None
+            group.loc[~group['success'], 'background_image'] = None
             bgsub_data.append(group)
 
         if not dry_run:
