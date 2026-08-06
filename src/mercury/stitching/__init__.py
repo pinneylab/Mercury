@@ -787,7 +787,7 @@ class BackgroundSubtractor:
             print("{successes} / {total} images were successfully background subtracted".format(successes=(success_mask).sum(), total=len(success_mask)))
             print()
             # update failure rows
-            group.loc[~success_mask, 'column_name'] = None
+            group.loc[~success_mask, 'background_image'] = None
             bgsub_data.append(group)
 
         if not dry_run:
