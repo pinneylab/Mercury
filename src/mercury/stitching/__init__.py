@@ -10,6 +10,7 @@ __version__ = "1.3.0"
 
 import yaml
 import shutil
+import os
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -19,6 +20,7 @@ from typing import Tuple, Union, List, Optional
 import matplotlib.pyplot as plt
 import warnings
 import fnmatch
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 # load config with defaults, if exists
 config_path = Path(__file__).parent / "config.yaml"
@@ -119,7 +121,7 @@ def stitch_single_raster(
     raster_params: rastering.RasterParams,
     stitched_image_path: Path,
     method: str = "cut",
-) -> Tuple[bool, Path, str]:
+) -> Tuple[bool, Path, Optional[str]]:
     """Process and stitch a single raster group of image tiles into a composite TIF file.
 
     Args:
@@ -129,25 +131,80 @@ def stitch_single_raster(
         method (str, optional): Stitching algorithm ('cut' or 'blend'). Default is 'cut'.
 
     Returns:
-        tuple[bool, Path, str]: Tuple containing:
+        tuple[bool, Path, str | None]: Tuple containing:
             - bool: Success status flag.
             - Path: Output stitched image file path.
-            - str: Error message string if failed, else None.
+            - str | None: Error message string if failed, else None.
     """
-    n_raster = int(raster_params.dims[0] * raster_params.dims[1])
-    assert len(raster) == n_raster
-    
-    # Create the raster and stitch
-    raster_obj = rastering.FlatRaster(
-        image_refs=raster,
-        params=raster_params
-    )
-    stitched_image = raster_obj.stitch(method=method)
-    
-    # Save the stitched image
-    io.imsave(stitched_image_path, stitched_image, check_contrast=False)
-        
-    return True, stitched_image_path, None
+    stitched_image_path = Path(stitched_image_path)
+    try:
+        n_raster = int(raster_params.dims[0] * raster_params.dims[1])
+        assert len(raster) == n_raster
+
+        raster_obj = rastering.FlatRaster(
+            image_refs=[str(p) for p in raster],
+            params=raster_params,
+        )
+        stitched_image = raster_obj.stitch(method=method)
+
+        stitched_image_path.parent.mkdir(parents=True, exist_ok=True)
+        io.imsave(stitched_image_path, stitched_image, check_contrast=False)
+
+        # Release large arrays promptly (helps serial loops and pool workers)
+        raster_obj._images = None
+        del stitched_image
+        del raster_obj
+
+        return True, stitched_image_path, None
+    except Exception as e:
+        return False, stitched_image_path, str(e)
+
+
+def _available_ram_bytes() -> Optional[int]:
+    """Best-effort available RAM in bytes (Linux sysconf), else None."""
+    try:
+        page_size = os.sysconf("SC_PAGE_SIZE")
+        avail_pages = os.sysconf("SC_AVPHYS_PAGES")
+        if page_size > 0 and avail_pages > 0:
+            return int(page_size) * int(avail_pages)
+    except (ValueError, OSError, AttributeError):
+        pass
+    return None
+
+
+def _estimate_bytes_per_worker(
+    tile_size: int,
+    max_cols: int,
+    max_rows: int,
+    max_overlap: float,
+    max_tiles: int,
+    any_auto_ff: bool,
+) -> int:
+    """Estimate peak RSS contribution per stitch worker (uint16 tiles/canvas)."""
+    margin = int(tile_size * max_overlap / 2)
+    retained = tile_size - 2 * margin
+    # canvas is (rows * retained, cols * retained)
+    canvas_bytes = max_rows * retained * max_cols * retained * 2
+    tile_bytes = tile_size * tile_size * 2
+    if any_auto_ff:
+        return canvas_bytes + max_tiles * tile_bytes
+    return canvas_bytes + tile_bytes
+
+
+def _auto_n_workers(
+    bytes_per_worker: int,
+    n_jobs: int,
+    ram_fraction: float = 0.5,
+) -> int:
+    """Choose process count from CPU count and a fraction of available RAM."""
+    cpu = os.cpu_count() or 1
+    if n_jobs <= 1:
+        return 1
+    avail = _available_ram_bytes()
+    if avail is None or bytes_per_worker <= 0:
+        return max(1, min(2, cpu, n_jobs))
+    by_ram = max(1, int((avail * ram_fraction) // bytes_per_worker))
+    return max(1, min(cpu, n_jobs, by_ram))
 
 
 class ImageStitcher:
@@ -174,7 +231,7 @@ class ImageStitcher:
         self.stitched_image_data = None
         self.setup = set(self.raster_data['setup'].tolist()).pop()
         
-    def load_raster_data() -> pd.DataFrame:
+    def load_raster_data(self) -> pd.DataFrame:
         """Loads and parses `imaging.csv` manifest data from root directory.
 
         Returns:
@@ -293,14 +350,18 @@ class ImageStitcher:
         raster_obj = rastering.FlatRaster(image_refs=raster, params=temp_params)
         return raster_obj.detect_rotation(search_range=search_range)
 
+    # TODO: consider implementing stitch_images as a dispatcher
+    # to appropriate serial or parallel method based on n_workers
+    # rotation and job extraction logic would be shared
     def stitch_images(self, 
         rotation: Optional[float] = None, 
         get_rotation_from: str = '*', 
         acqui_origin: Tuple[bool] = (True, False),
         method: str = "cut",
-        overlap: Optional[float] = 0.1,
+        auto_overlap: bool = False,
         get_overlap_from: str = '*',
-        rotation_method: str = "overlaps"
+        rotation_method: str = "overlaps",
+        n_workers: Optional[int] = None,
     ):
         """Stitches all tile rasters listed in `imaging.csv` manifest.
 
@@ -309,9 +370,11 @@ class ImageStitcher:
             get_rotation_from (str, optional): Pattern matching rasters for auto-rotation estimation.
             acqui_origin (tuple[bool], optional): Acquisition origin tuple (e.g., (True, False)).
             method (str, optional): Stitching algorithm ('cut' or 'blend'). Default is 'cut'.
-            overlap (float, optional): Tile overlap fraction (0 to 1).
+            auto_overlap (bool, optional): Reserved; auto-overlap detection is currently disabled.
             get_overlap_from (str, optional): Pattern matching rasters for auto-overlap estimation.
             rotation_method (str, optional): Auto-rotation method ('overlaps' or 'radon').
+            n_workers (int, optional): Process pool size. ``None`` auto-sizes from CPU and ~50% RAM;
+                ``1`` forces serial stitching.
         """
         assert isinstance(self.raster_data, pd.DataFrame), 'Raster data has not been set.'
 
@@ -352,65 +415,112 @@ class ImageStitcher:
             rotation = float(np.median(detected_rotations))
             print(f"Using optimal rotation: {rotation:.3f} degrees from matching rasters")
 
-        # Automatically calculate overlap if None is passed
-        if overlap is None:
-            matched_overlap_paths = [
-                gp for gp in grouped.groups.keys()
-                if fnmatch.fnmatch(gp.name, get_overlap_from) or 
-                   fnmatch.fnmatch(str(gp.relative_to(self._raw_images_path)), get_overlap_from)
-            ]
-            if not matched_overlap_paths:
-                raise ValueError(f"No raster groups matched the pattern '{get_overlap_from}' for overlap detection. Available groups: {[gp.name for gp in grouped.groups.keys()]}")
-            
-            detected_overlaps = []
-            for group_path in matched_overlap_paths:
-                print(f"Auto-detecting optimal overlap from raster: {group_path}")
-                try:
-                    df = grouped.get_group(group_path)
-                    overlap_csv, width, height, ff_correction = df[['raster_overlap', 'raster_width', 'raster_height', 'apply_ff_correction']].iloc[0]
-                    width, height = int(width), int(height)
-                    raster = df['image_path'].to_list()
-                    # Use a baseline guess of 0.1 to extract overlap strips
-                    temp_params = rastering.RasterParams(0.1, size=SIZE, acqui_ori=acqui_origin, rotation=rotation, dims=(width, height), auto_ff=ff_correction, ff_type='BaSiC')
-                    raster_obj = rastering.FlatRaster(image_refs=raster, params=temp_params)
-                    raster_obj.fetch_images()
-                    val = raster_obj.detect_overlap()
-                    print(f"Detected overlap for {group_path.name}: {val:.4f}")
-                    detected_overlaps.append(val)
-                except Exception as e:
-                    print(f"Warning: Failed to auto-detect overlap for {group_path.name}: {e}")
-            
-            if not detected_overlaps:
-                raise ValueError(f"Failed to auto-detect overlap from any matching raster group (pattern: '{get_overlap_from}').")
-                
-            overlap = float(np.median(detected_overlaps))
-            print(f"Using optimal overlap: {overlap:.4f} from matching rasters")
+        # Build job list in deterministic group order
+        jobs = []
+        max_cols = 1
+        max_rows = 1
+        max_overlap = 0.0
+        max_tiles = 1
+        any_auto_ff = False
+
+        for image_parent, df in grouped:
+            outpath = self._stitched_images_path / image_parent.relative_to(self._raw_images_path).with_suffix('.tif')
+            overlap, width, height, ff_correction = df[['raster_overlap', 'raster_width', 'raster_height', 'apply_ff_correction']].iloc[0]
+            width, height = int(width), int(height)
+            overlap = float(overlap)
+            ff_correction = bool(ff_correction)
+            raster = [str(p) for p in df['image_path'].to_list()]
+            params = rastering.RasterParams(
+                overlap,
+                size=SIZE,
+                acqui_ori=acqui_origin,
+                rotation=rotation,
+                dims=(width, height),
+                auto_ff=ff_correction,
+                ff_type='BaSiC',
+            )
+            meta_row = df.drop_duplicates(subset=['image_path_parent']).drop(columns=raster_headers)
+            jobs.append((image_parent, raster, params, outpath, meta_row))
+
+            max_cols = max(max_cols, width)
+            max_rows = max(max_rows, height)
+            max_overlap = max(max_overlap, overlap)
+            max_tiles = max(max_tiles, width * height)
+            any_auto_ff = any_auto_ff or ff_correction
+
+        bytes_per_worker = _estimate_bytes_per_worker(
+            SIZE, max_cols, max_rows, max_overlap, max_tiles, any_auto_ff
+        )
+        if n_workers is None:
+            workers = _auto_n_workers(bytes_per_worker, n_jobs=len(jobs))
+        else:
+            workers = max(1, int(n_workers))
+            avail = _available_ram_bytes()
+            if avail is not None and workers * bytes_per_worker > avail * 0.5:
+                print(
+                    f"Warning: n_workers={workers} may exceed ~50% available RAM "
+                    f"(est. {workers * bytes_per_worker / (1024**2):.0f} MB vs "
+                    f"{0.5 * avail / (1024**2):.0f} MB budget)."
+                )
+
+        print(
+            f"Stitching {len(jobs)} rasters with n_workers={workers} "
+            f"(est. {bytes_per_worker / (1024**2):.1f} MB/worker)."
+        )
 
         success_counter = 0
-        for image_parent, df in tqdm(grouped, desc='Stitching images.'):
+        results_by_parent = {}
 
-            try:
-                # format outpath and make sure directory to write it to exists
-                outpath = self._stitched_images_path / image_parent.relative_to(self._raw_images_path).with_suffix('.tif')
+        def _run_serial():
+            nonlocal success_counter
+            for image_parent, raster, params, outpath, meta_row in tqdm(jobs, desc='Stitching images.'):
+                outpath.parent.mkdir(parents=True, exist_ok=True)
+                ok, _, err = stitch_single_raster(raster, params, outpath, method=method)
+                if ok:
+                    row = meta_row.copy()
+                    row['image_path'] = outpath.relative_to(self._stitched_images_path)
+                    results_by_parent[image_parent] = row
+                    success_counter += 1
+                else:
+                    print('Failed stitching of {}: {}'.format(image_parent, err))
+
+        if workers <= 1:
+            _run_serial()
+        else:
+            # Ensure parent dirs exist before workers write
+            for _, _, _, outpath, _ in jobs:
                 outpath.parent.mkdir(parents=True, exist_ok=True)
 
-                # extract params, stitch image
-                overlap_csv, width, height, ff_correction = df[['raster_overlap', 'raster_width', 'raster_height', 'apply_ff_correction']].iloc[0]
-                width, height = int(width), int(height)
-                raster = df['image_path'].to_list()
-                params = rastering.RasterParams(overlap, size=SIZE, acqui_ori=acqui_origin, rotation=rotation, dims=(width, height), auto_ff=ff_correction, ff_type='BaSiC') 
-                stitch_single_raster(raster, params, outpath, method=method)
+            with ProcessPoolExecutor(max_workers=workers) as executor:
+                future_map = {
+                    executor.submit(
+                        stitch_single_raster, raster, params, outpath, method
+                    ): (image_parent, outpath, meta_row)
+                    for image_parent, raster, params, outpath, meta_row in jobs
+                }
+                for fut in tqdm(as_completed(future_map), total=len(future_map), desc='Stitching images.'):
+                    image_parent, outpath, meta_row = future_map[fut]
+                    try:
+                        ok, _, err = fut.result()
+                    except Exception as e:
+                        ok, err = False, str(e)
+                    if ok:
+                        row = meta_row.copy()
+                        row['image_path'] = outpath.relative_to(self._stitched_images_path)
+                        results_by_parent[image_parent] = row
+                        success_counter += 1
+                    else:
+                        print('Failed stitching of {}: {}'.format(image_parent, err))
 
-                # carry over metadata
-                row = df.drop_duplicates(subset=['image_path_parent']).drop(columns=raster_headers)
-                row['image_path'] = outpath.relative_to(self._stitched_images_path)
-                stitched_image_data.append(row)
-                success_counter += 1
+        print('Successfully stitched {} / {} images.'.format(success_counter, len(jobs)))
 
-            except Exception as e:
-                print('Failed stitching of {}: {}'.format(image_parent, e))
+        # Preserve deterministic group order in CSV
+        for image_parent, _, _, _, _ in jobs:
+            if image_parent in results_by_parent:
+                stitched_image_data.append(results_by_parent[image_parent])
 
-        print('Successfully stitched {} / {} images.'.format(success_counter, len(grouped)))
+        if not stitched_image_data:
+            raise RuntimeError("No rasters were successfully stitched.")
 
         self.stitched_image_data = pd.concat(stitched_image_data).reset_index(drop=True)
         self.stitched_image_data.to_csv(self._stitched_images_path / 'stitched_images.csv', index=False)
@@ -546,7 +656,7 @@ def backgroud_subtract(background_image: np.ndarray, target_image: np.ndarray) -
     
     return subtracted_clipped
 
-
+# TODO: implement image streaming / parallelism here as well
 class BackgroundSubtractor:
     """Manages background image matching and subtraction across stitched image datasets.
 

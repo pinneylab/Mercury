@@ -9,7 +9,7 @@ from scipy.ndimage import gaussian_filter
 from basicpy import BaSiC
 
 import os
-from typing import Tuple
+from typing import Iterable, Iterator, List, Optional, Tuple, Union
 
 
 def ff_subtract(i, ffi, ff_bval, ff_scale):
@@ -41,6 +41,99 @@ def rotate_image(img, rotation_val) -> np.array:
     """
     rotation_params = {"resize": False, "clip": True, "preserve_range": True}
     return transform.rotate(img, rotation_val, **rotation_params).astype("uint16")
+
+
+def iter_tiles(
+    refs: Iterable[Union[str, pathlib.Path]], rotation: float = 0.0
+) -> Iterator[Tuple[int, np.ndarray]]:
+    """Yield (index, tile) one at a time: read, optional rotate, then drop after yield."""
+    for i, ref in enumerate(refs):
+        img = io.imread(ref)
+        if rotation:
+            img = rotate_image(img, rotation)
+        yield i, img
+
+
+def load_tiles(
+    refs: Iterable[Union[str, pathlib.Path]], rotation: float = 0.0
+) -> List[np.ndarray]:
+    """Load (and optionally rotate) all tiles into a list."""
+    return [tile for _, tile in iter_tiles(refs, rotation)]
+
+
+def cut_margin_retained(size: int, overlap: float) -> Tuple[int, int, slice]:
+    """Return (margin, retained, border_slice) for cut-stitch trimming."""
+    if overlap < 0 or overlap >= 1:
+        raise ValueError("Overlap must be ≥ 0 and < 1")
+    margin = int(size * overlap / 2)
+    retained = size - 2 * margin
+    if margin == 0:
+        border = slice(0, None)
+    else:
+        border = slice(margin, -margin)
+    return margin, retained, border
+
+
+def grid_index(
+    i: int, dims: Tuple[int, int], acqui_ori: Tuple[bool, bool]
+) -> Tuple[int, int]:
+    """Map flat tile index to (col, row) after acquisition-origin flips.
+
+    Matches historical reshape+(flip axis 0/1)+concatenate geometry:
+    dims=(cols, rows); flat order is c * rows + r.
+    """
+    cols, rows = int(dims[0]), int(dims[1])
+    c = i // rows
+    r = i % rows
+    if acqui_ori[0]:
+        c = cols - 1 - c
+    if acqui_ori[1]:
+        r = rows - 1 - r
+    return c, r
+
+
+def paste_cut_tile(
+    canvas: np.ndarray,
+    tile: np.ndarray,
+    c: int,
+    r: int,
+    retained: int,
+    border: slice,
+) -> None:
+    """Trim tile borders and paste into the cut-stitch canvas in place.
+
+    Canvas layout matches historical concatenate: axis0 stacks rows, axis1 stacks cols,
+    so tile (c, r) lands at canvas[r*retained:(r+1)*retained, c*retained:(c+1)*retained].
+    """
+    y0 = r * retained
+    x0 = c * retained
+    canvas[y0 : y0 + retained, x0 : x0 + retained] = tile[border, border]
+
+
+def assemble_cut(
+    tile_iter: Iterable[Tuple[int, np.ndarray]],
+    dims: Tuple[int, int],
+    acqui_ori: Tuple[bool, bool],
+    overlap: float,
+    size: int,
+    dtype=None,
+) -> np.ndarray:
+    """Allocate a canvas and paste trimmed tiles from an (index, array) iterator."""
+    _, retained, border = cut_margin_retained(size, overlap)
+    cols, rows = int(dims[0]), int(dims[1])
+    canvas = None
+
+    for i, tile in tile_iter:
+        if canvas is None:
+            out_dtype = dtype if dtype is not None else tile.dtype
+            # (rows*retained, cols*retained) matches np.concatenate cut geometry
+            canvas = np.empty((rows * retained, cols * retained), dtype=out_dtype)
+        c, r = grid_index(i, dims, acqui_ori)
+        paste_cut_tile(canvas, tile, c, r, retained, border)
+
+    if canvas is None:
+        raise ValueError("assemble_cut received no tiles")
+    return canvas
 
 
 def find_imaging_csv(img_path: pathlib.Path) -> pathlib.Path:
@@ -215,7 +308,7 @@ class Raster(ABC):
 
         return [ff_subtract(i, ff_image, ff_bval, ff_scale) for i in self._images]
 
-    def applyFF_BaSiC(self, plot: bool):
+    def applyFF_BaSiC(self, plot: bool, images: Optional[List[np.ndarray]] = None):
         """
         Applies flat-field correction to fetched images using BaSiC. This technique simulates a FF and
         dark image based on common shared features across the full raster (e.g. 64 images).
@@ -225,28 +318,21 @@ class Raster(ABC):
         Implemented in v2.1.0 by Peter Suzuki, Youngbin Lim
 
         Arguments:
-            None
+            plot (bool): Whether to show diagnostic plots.
+            images (list, optional): Explicit tile list; defaults to self._images.
 
         Returns:
-            None
-
+            list[np.ndarray]: Flat-field corrected tile images.
         """
-        # print("Running BaSiC for FF correction...")
-
-        # Load images
-        imgarray = []
-        for img in self._images:
-            # print(img.shape)
-            imgarray.append(img)
-        images = np.asarray(imgarray)
+        imgarray = list(images) if images is not None else list(self._images)
+        stacked = np.asarray(imgarray)
 
         # Initialize BaSiC and train
         basic = BaSiC(get_darkfield=False, smoothness_flatfield=1)
-        basic.fit(images)
+        basic.fit(stacked)
 
         # Smooth FF image and apply transform to each raw image
         ffImage = gaussian_filter(basic.flatfield, sigma=50)
-        # StitchingSettings.ffImages[self.params.channel] = ffImage # save ffImage to settings
 
         ffbval = 0
         ffscale = 1
@@ -370,11 +456,11 @@ class Raster(ABC):
             (np.ndarray) A stitched image array
 
         """
-
-        self.fetch_images()
         if method == "cut":
+            # cut_stitch streams tiles (or loads for BaSiC); do not prefetch all
             return self.cut_stitch(plot)
-        elif method == "smart":
+        self.fetch_images()
+        if method == "smart":
             return self.smart_stitch()
         elif method == "overlap":
             return self.overlap_stitch()
@@ -392,66 +478,46 @@ class Raster(ABC):
         """
         raise NotImplementedError("Functionality not ready yet.")
 
-    def cut_stitch(self, plot: bool):
+    def cut_stitch(self, plot: bool = False):
         """
         Stitches a raster via the 'cut' method. Trims borders according to image overlap and
-        concatenates along both axes. If RasterParameters.auto_ff is True, performs
-        flat-field correction prior to stitching.
+        pastes into a preallocated canvas. If RasterParameters.auto_ff is True, loads all
+        tiles for BaSiC flat-field correction, then pastes corrected tiles.
 
-        Arguments:
-            None
+        When auto_ff is False, tiles are streamed one at a time (read → rotate → trim → paste → drop).
 
         Returns:
             (np.ndarray) A stitched image array
-
         """
-        imsize = self.params.size
-        margin = int(imsize * self.params.overlap / 2)  # Edge dim to trim
-        retained = imsize - 2 * margin
+        params = self.params
+        # Validate overlap early
+        cut_margin_retained(params.size, params.overlap)
 
-        if self.params.overlap < 0 or self.params.overlap >= 1:
-            raise ValueError("Overlap must be ≥ 0 and < 1")
+        if params.auto_ff and params.ff_type == "BaSiC":
+            tiles = load_tiles(self._image_refs, params.rotation)
+            self._images = tiles
+            corrected = self.applyFF_BaSiC(plot, images=tiles)
+            self.ffCorrectedImages = corrected # TODO: figure out why images are being assigned to an attribute
+            result = assemble_cut(
+                enumerate(corrected),
+                dims=params.dims,
+                acqui_ori=params.acqui_ori,
+                overlap=params.overlap,
+                size=params.size,
+            )
+            self._images = None
+            self.ffCorrectedImages = None
+            return result
 
-        # Catch no overlap case
-        if margin == 0:
-            border = slice(0, None)
-        else:
-            border = slice(margin, -margin)
-
-        tiles = self._images
-        if self.params.auto_ff and self.params.ff_type == "BaSiC":
-            tiles = self.ffCorrectedImages = self.applyFF_BaSiC(plot)
-            # print("completed BaSiC FF correction")
-
-            # logging.info(
-            #     "BaSiC Flat-Field Corrected Image | Ch: {}, Exp: {}".format(
-            #         self.params.channel, self.params.exposure
-            #     )
-            # )
-
-        # elif self.params.auto_ff and self.params.ff_type == "BaSiC_masked":
-        #     tiles = self.ffCorrectedImages = self.applyFF_BaSiC_masked()
-        #     print("completed BaSiC FF correction with mask")
-
-        #     logging.info(
-        #         "BaSiC Flat-Field Corrected Image | Ch: {}, Exp: {}".format(
-        #             self.params.channel, self.params.exposure
-        #         )
-        #     )
-
-        trimmedTiles = [tile[border, border] for tile in tiles]  # Trim
-        tileArray = np.asarray(trimmedTiles)
-
-        arrangedTiles = np.reshape(
-            tileArray, (self.params.dims[0], self.params.dims[1], retained, retained)
+        result = assemble_cut(
+            iter_tiles(self._image_refs, params.rotation),
+            dims=params.dims,
+            acqui_ori=params.acqui_ori,
+            overlap=params.overlap,
+            size=params.size,
         )
-        if self.params.acqui_ori[0]:  # if origin on on right, flip horizontally (view returned)
-            arrangedTiles = np.flip(arrangedTiles, 0)
-        if self.params.acqui_ori[1]:  # If origin on bottom, flip vertically (view returned)
-            arrangedTiles = np.flip(arrangedTiles, 1)
-        rowsStitched = np.concatenate(arrangedTiles, axis=2)  # Stitch rows
-        fullStitched = np.concatenate(rowsStitched, axis=0)  # Stitch cols
-        return fullStitched
+        self._images = None
+        return result
 
     def detect_overlap(self) -> float:
         """
@@ -872,6 +938,7 @@ class Raster(ABC):
         return selfstem < otherstem
 
 
+# TODO: deprecate in future versions if unused
 class FlatRaster(Raster):
     """Raster subclass for handling flat unstacked single-file tile images.
 
@@ -885,29 +952,9 @@ class FlatRaster(Raster):
 
     def fetch_images(self):
         """
-        Fetches (loads into memory) and rotates images (if indicated by raster parameters)
+        Fetches (loads into memory) and rotates images (if indicated by raster parameters).
 
-        Arguments:
-            None
-
-        Returns:
-            None
-
+        Thin wrapper around load_tiles for callers that need random access (detection, rescue).
         """
-        # r = self._params.rotation
-        #
-        # images = [io.imread(img) for img in self.image_refs]
-        #
-        # if r:
-        #     images = [rotate_image(img, self._params.rotation) for img in images]
-        #
-        # self._images = images
-
-        self._images = [io.imread(img) for img in self._image_refs]
-
-        if self._params.rotation:
-            # if rotation value provided, rotate all images
-            self._images = [
-                rotate_image(img, self._params.rotation) for img in self._images
-            ]
+        self._images = load_tiles(self._image_refs, self._params.rotation)
 
