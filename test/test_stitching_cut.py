@@ -77,6 +77,17 @@ def test_assemble_cut_matches_concat_reference(acqui_ori, rotation, tmp_path):
     np.testing.assert_array_equal(got, expected)
 
 
+def test_rotate_image_preserves_shape_and_dtype():
+    rng = np.random.default_rng(0)
+    img = rng.integers(0, 40000, size=(64, 64), dtype=np.uint16)
+    out = rastering.rotate_image(img, 1.5)
+    assert out.shape == img.shape
+    assert out.dtype == np.uint16
+    # Identity angle should not allocate a distinct buffer copy of values
+    same = rastering.rotate_image(img, 0.0)
+    np.testing.assert_array_equal(same, img)
+
+
 def test_cut_stitch_streaming_clears_images(tmp_path):
     cols, rows, size, overlap = 2, 2, 32, 0.0
     tiles = _make_synthetic_tiles(cols, rows, size)

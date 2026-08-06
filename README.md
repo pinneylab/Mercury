@@ -53,8 +53,8 @@ Done:
 1. Stream tiles: read, rotate, trim, paste into a pre-allocated canvas, and drop tiles (~one tile + one canvas peak for FF-off cut).
 2. Parallelize stitching across rasters with a memory-aware process pool (`n_workers` on `ImageStitcher.stitch_images`).
 3. In-place pasting during cut-stitch (shared `assemble_cut` kernel; no concat stack).
+4. Faster tile rotation via `cv2.warpAffine` (`rastering.rotate_image`).
 
 Down the line:
 1. Default source of truth for overlap parameter should come from `imaging.csv`, not auto-calculated. Additionally, overlap should really be considered as a per-image parameter (or at least a shared parameter across images taken with the same settings).
-2. faster rotation with cv2.warpAffine
-3. Prefetch + aggressive release + memmap/tiled writes
+2. Prefetch + aggressive release + memmap/tiled writes

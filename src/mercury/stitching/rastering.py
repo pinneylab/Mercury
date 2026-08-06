@@ -1,7 +1,8 @@
 import numpy as np
 import pathlib
 import logging
-from skimage import io, transform
+import cv2
+from skimage import io
 from abc import abstractmethod, ABC
 from matplotlib import pyplot as plt
 from scipy.optimize import curve_fit
@@ -30,7 +31,12 @@ def ff_subtract(i, ffi, ff_bval, ff_scale):
 
 
 def rotate_image(img, rotation_val) -> np.array:
-    """Rotates an image array by a specified angle in degrees.
+    """Rotates an image array by a specified angle in degrees via ``cv2.warpAffine``.
+
+    Matches the historical skimage convention: positive angles are
+    counter-clockwise, output shape is unchanged, and out-of-bounds pixels
+    are filled with 0. The rotation center uses skimage's ``(cols-1)/2``,
+    ``(rows-1)/2`` convention for closer geometric agreement.
 
     Args:
         img (np.ndarray): Input image array.
@@ -39,8 +45,23 @@ def rotate_image(img, rotation_val) -> np.array:
     Returns:
         np.ndarray: Rotated uint16 image array.
     """
-    rotation_params = {"resize": False, "clip": True, "preserve_range": True}
-    return transform.rotate(img, rotation_val, **rotation_params).astype("uint16")
+    if not rotation_val:
+        return img.astype("uint16", copy=False)
+
+    rows, cols = img.shape[:2]
+    # skimage.transform.rotate center convention
+    center = ((cols - 1) / 2.0, (rows - 1) / 2.0)
+    matrix = cv2.getRotationMatrix2D(center, rotation_val, 1.0)
+    # Float warp + truncating cast mirrors prior skimage .astype("uint16") path
+    rotated = cv2.warpAffine(
+        img.astype(np.float32, copy=False),
+        matrix,
+        (cols, rows),
+        flags=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_CONSTANT,
+        borderValue=0.0,
+    )
+    return rotated.astype("uint16")
 
 
 def iter_tiles(
