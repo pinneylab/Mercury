@@ -386,11 +386,15 @@ class ImageStitcher:
         grouped = self.raster_data.groupby('image_path_parent')
 
         if rotation is None:
-            matched_group_paths = [
-                gp for gp in grouped.groups.keys()
-                if fnmatch.fnmatch(gp.name, get_rotation_from) or 
-                   fnmatch.fnmatch(str(gp.relative_to(self._raw_images_path)), get_rotation_from)
-            ]
+            matched_group_paths = []
+            for gp in grouped.groups.keys():
+                if fnmatch.fnmatch(gp.name, get_rotation_from):
+                    matched_group_paths.append(gp)
+                    continue
+                if not gp.is_relative_to(self._raw_images_path):
+                    continue
+                if fnmatch.fnmatch(str(gp.relative_to(self._raw_images_path)), get_rotation_from):
+                    matched_group_paths.append(gp)
             if not matched_group_paths:
                 raise ValueError(f"No raster groups matched the pattern '{get_rotation_from}'. Available groups: {[gp.name for gp in grouped.groups.keys()]}")
             
@@ -424,6 +428,22 @@ class ImageStitcher:
         any_auto_ff = False
 
         for image_parent, df in grouped:
+            image_parent = Path(image_parent)
+            if not image_parent.is_relative_to(self._raw_images_path):
+                print(
+                    f"Warning: skipping {image_parent}: "
+                    f"not under {self._raw_images_path}"
+                )
+                continue
+
+            missing = [p for p in df['image_path'] if not Path(p).exists()]
+            if missing:
+                print(
+                    f"Warning: skipping {image_parent}: "
+                    f"{len(missing)} tile(s) missing (e.g. {missing[0]})"
+                )
+                continue
+
             outpath = self._stitched_images_path / image_parent.relative_to(self._raw_images_path).with_suffix('.tif')
             overlap, width, height, ff_correction = df[['raster_overlap', 'raster_width', 'raster_height', 'apply_ff_correction']].iloc[0]
             width, height = int(width), int(height)
