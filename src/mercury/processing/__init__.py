@@ -38,15 +38,20 @@ class Processor:
     def _update_reference_image(self, dname: str, chip_image: chip.ChipImage):
         self.reference_images[dname] = chip_image
 
-    def _process_features(self, chip_image: chip.ChipImage, coerce_chamber_center: bool = False):
+    def _process_features(
+        self,
+        chip_image: chip.ChipImage,
+        coerce_chamber_center: bool = False,
+        n_jobs: int = -1,
+    ):
         """Extract feature processing logic into a reusable method."""
         if self.features == 'chamber':
-            chip_image.findChambers(coerce_center=coerce_chamber_center)
+            chip_image.findChambers(coerce_center=coerce_chamber_center, n_jobs=n_jobs)
         elif self.features == 'button':
-            chip_image.findButtons()
+            chip_image.findButtons(n_jobs=n_jobs)
         elif self.features == 'all':
-            chip_image.findChambers(coerce_center=coerce_chamber_center)
-            chip_image.findButtons()
+            chip_image.findChambers(coerce_center=coerce_chamber_center, n_jobs=n_jobs)
+            chip_image.findButtons(n_jobs=n_jobs)
 
     def _save_summary_image(
         self,
@@ -99,6 +104,7 @@ class Processor:
         coerce_chamber_center: bool = False,
         as_ubyte: bool = False,
         compress: bool = False,
+        n_jobs: int = -1,
     ):
         """Set reference image for a device."""
 
@@ -119,7 +125,7 @@ class Processor:
         # Create and process chip image
         chip_image = chip.ChipImage(self.experiment.devices[dname], image, corners)
         chip_image.stamp()
-        self._process_features(chip_image, coerce_chamber_center)
+        self._process_features(chip_image, coerce_chamber_center, n_jobs=n_jobs)
         
         self._update_reference_image(dname, chip_image)
 
@@ -136,6 +142,7 @@ class Processor:
         coerce_chamber_center: bool = False,
         as_ubyte: bool = False,
         compress: bool = False,
+        n_jobs: int = -1,
         **kwargs
     ):
         """High-level dispatcher that handles the mutual exclusivity logic."""
@@ -145,6 +152,7 @@ class Processor:
                 save_summary_images=save_summary_images,
                 as_ubyte=as_ubyte,
                 compress=compress,
+                n_jobs=n_jobs,
                 **kwargs,
             )
         
@@ -159,6 +167,7 @@ class Processor:
                 save_summary_images=save_summary_images,
                 as_ubyte=as_ubyte,
                 compress=compress,
+                n_jobs=n_jobs,
                 **kwargs,
             )
         
@@ -168,6 +177,7 @@ class Processor:
         coerce_chamber_center: bool = False,
         as_ubyte: bool = False,
         compress: bool = False,
+        n_jobs: int = -1,
     ):
         """Process images with manually provided corners."""
         data = []
@@ -176,7 +186,7 @@ class Processor:
             dname, image, c = self.image_data[['dname', 'image_path', 'corners']].iloc[i]
             chip_image = chip.ChipImage(self.experiment.devices[dname], image, c)
             chip_image.stamp()
-            self._process_features(chip_image, coerce_chamber_center)
+            self._process_features(chip_image, coerce_chamber_center, n_jobs=n_jobs)
 
             processed_data = chip_image.summarize().reset_index()
             metadata = pd.DataFrame([self.image_data.iloc[i]] * len(processed_data)).reset_index(drop=True)
@@ -195,8 +205,13 @@ class Processor:
         save_summary_images: bool = True,
         as_ubyte: bool = False,
         compress: bool = False,
+        n_jobs: int = -1,
     ):
-        """Process images by mapping from reference images."""
+        """Process images by mapping from reference images.
+
+        n_jobs is accepted for API symmetry with process()/manual finding but unused here
+        (features are mapped, not re-detected).
+        """
 
         data = []
         for i in tqdm(range(len(self.image_data)), desc='Processing images', leave=False):

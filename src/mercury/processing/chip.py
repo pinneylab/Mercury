@@ -1,7 +1,10 @@
 import gc
+import os
 import warnings
 from copy import deepcopy
 from collections import namedtuple
+from concurrent.futures import ProcessPoolExecutor
+import multiprocessing as mp
 # from mercury.processing import experiment
 
 import numpy as np
@@ -10,10 +13,61 @@ from tqdm.auto import tqdm
 import pandas as pd
 
 from typing import List
-import multiprocessing
 
 import cv2
 import skimage
+
+
+_CV2_THREADS_LIMITED = False
+
+
+def _resolve_n_jobs(n_jobs: int) -> int:
+    """Resolve n_jobs: -1 means all CPUs; result is always >= 1."""
+    if n_jobs is None or n_jobs == -1:
+        return os.cpu_count() or 1
+    return max(1, int(n_jobs))
+
+
+def _ensure_cv2_single_threaded():
+    """Limit OpenCV threading once per process to avoid pool oversubscription."""
+    global _CV2_THREADS_LIMITED
+    if not _CV2_THREADS_LIMITED:
+        cv2.setNumThreads(1)
+        _CV2_THREADS_LIMITED = True
+
+
+def _chamber_worker(payload):
+    """Picklable worker: find chamber geometry for one stamp array."""
+    i, data, coerce_center = payload
+    _ensure_cv2_single_threaded()
+    stamp = Stamp(data, None, None, (0, 0), None)
+    stamp.findChamber(coerce_center=coerce_center)
+    if stamp.chamber is None or stamp.chamber.blankFlag:
+        return i, None
+    return i, (stamp.chamber.center, stamp.chamber.radius)
+
+
+def _button_worker(payload):
+    """Picklable worker: find button geometry for one stamp array."""
+    i, data = payload
+    _ensure_cv2_single_threaded()
+    stamp = Stamp(data, None, None, (0, 0), None)
+    stamp.findButton()
+    if stamp.button is None or stamp.button.blankFlag:
+        return i, None
+    return i, (
+        stamp.button.center,
+        stamp.button.disk_radius,
+        stamp.button.annulus_radii,
+    )
+
+
+def _stamp_process_pool(max_workers: int) -> ProcessPoolExecutor:
+    """Process pool using spawn to avoid fork deadlocks under threaded parents (e.g. pytest)."""
+    return ProcessPoolExecutor(
+        max_workers=max_workers,
+        mp_context=mp.get_context("spawn"),
+    )
 
 
 class ChipImage:
@@ -217,35 +271,80 @@ class ChipImage:
                     'Invalid feature name. Choices are "chamber", "button", or "all".'
                 )
 
-    def findChambers(self, coerce_center=False):
+    def findChambers(self, coerce_center=False, n_jobs=-1):
         """
         Performs chamber finding for each of the Stamps in the ChipImage. Uses a Hough transform.
 
         Arguments:
-            None
+            (bool) coerce_center: if True, place chamber at stamp center with fixed radius
+            (int) n_jobs: worker processes (-1 = all CPUs, 1 = serial)
 
         Returns:
             None
 
         """
 
-        for c in tqdm(self.stamps.flatten(), desc="Finding chambers", leave=False):
-            c.findChamber(coerce_center=coerce_center)
+        stamps = list(self.stamps.flatten())
+        workers = _resolve_n_jobs(n_jobs)
+        if workers <= 1:
+            for c in tqdm(stamps, desc="Finding chambers", leave=False):
+                c.findChamber(coerce_center=coerce_center)
+            return
 
-    def findButtons(self):
+        payloads = [(i, s.data, coerce_center) for i, s in enumerate(stamps)]
+        chunksize = max(1, len(payloads) // (workers * 4))
+        with _stamp_process_pool(workers) as executor:
+            results = list(
+                tqdm(
+                    executor.map(_chamber_worker, payloads, chunksize=chunksize),
+                    total=len(payloads),
+                    desc="Finding chambers",
+                    leave=False,
+                )
+            )
+        for i, geom in results:
+            if geom is None:
+                stamps[i].chamber = Chamber.BlankChamber()
+            else:
+                center, radius = geom
+                stamps[i].defineChamber(center, radius)
+
+    def findButtons(self, n_jobs=-1):
         """
-        Performs button finding for each of the Stamps in the ChipImage. Uses a Hough transform.
+        Performs button finding for each of the Stamps in the ChipImage.
 
         Arguments:
-            None
+            (int) n_jobs: worker processes (-1 = all CPUs, 1 = serial)
 
         Returns:
             None
 
         """
 
-        for c in tqdm(self.stamps.flatten(), desc="Finding buttons", leave=False):
-            c.findButton()
+        stamps = list(self.stamps.flatten())
+        workers = _resolve_n_jobs(n_jobs)
+        if workers <= 1:
+            for c in tqdm(stamps, desc="Finding buttons", leave=False):
+                c.findButton()
+            return
+
+        payloads = [(i, s.data) for i, s in enumerate(stamps)]
+        chunksize = max(1, len(payloads) // (workers * 4))
+        with _stamp_process_pool(workers) as executor:
+            results = list(
+                tqdm(
+                    executor.map(_button_worker, payloads, chunksize=chunksize),
+                    total=len(payloads),
+                    desc="Finding buttons",
+                    leave=False,
+                )
+            )
+        for i, geom in results:
+            if geom is None:
+                stamps[i].button = Button.BlankButton()
+            else:
+                center, disk_radius, annulus_radii = geom
+                stamps[i].defineButton(center, disk_radius, annulus_radii)
 
     def summarize(self):
         """
@@ -459,7 +558,7 @@ class Stamp:
             annulus_mask,
             b["center"],
             b["radius"],
-            (b["radius"], b["radius"]),
+            (b["radius"], o["radius"]),
         )
 
     def summarize(self):
