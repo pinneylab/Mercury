@@ -2,11 +2,13 @@
 
 """Top-level package for processing."""
 
-from mercury.processing import chip, experiment
+from mercury.processing import chip, experiment, roi
 
 __author__ = """Daniel Mokhtari"""
 __email__ = ""
 __version__ = "0.1.0"
+
+import warnings
 
 import skimage
 import pandas as pd
@@ -28,15 +30,15 @@ class Processor:
         assert self.features in ('button', 'chamber', 'all'), "features argument must be 'button', 'chamber', or 'all'."
 
         self.reference_images = {dname: None for dname in self.experiment.devices}
+        self.reference_rois = {dname: None for dname in self.experiment.devices}
 
         self.summary_image_dir = self.experiment.root / 'summary_images'
 
-        # print('Loaded the following images:')
-        # for image in image_data['image_path']:
-        #     print(image)
-
     def _update_reference_image(self, dname: str, chip_image: chip.ChipImage):
         self.reference_images[dname] = chip_image
+
+    def _update_reference_roi(self, dname: str, chip_image: chip.ChipImage):
+        self.reference_rois[dname] = roi.RoiSet.from_chip(chip_image, self.features)
 
     def _process_features(
         self,
@@ -53,6 +55,27 @@ class Processor:
             chip_image.findChambers(coerce_center=coerce_chamber_center, n_jobs=n_jobs)
             chip_image.findButtons(n_jobs=n_jobs)
 
+    def _summary_outpath(self, image: Union[Path, str]) -> Path:
+        image = Path(image) if not isinstance(image, Path) else image
+        outpath = self.summary_image_dir / image.relative_to(self.experiment.root)
+        outpath.parent.mkdir(parents=True, exist_ok=True)
+        return outpath
+
+    def _imsave_summary(
+        self,
+        summary_image,
+        outpath: Path,
+        *,
+        as_ubyte: bool = False,
+        compress: bool = False,
+    ):
+        if as_ubyte:
+            summary_image = skimage.img_as_ubyte(summary_image)
+        save_kwargs = {'check_contrast': False}
+        if compress and outpath.suffix.lower() in {'.tif', '.tiff'}:
+            save_kwargs['compression'] = 'zlib'
+        skimage.io.imsave(outpath, summary_image, **save_kwargs)
+
     def _save_summary_image(
         self,
         chip_image: chip.ChipImage,
@@ -60,28 +83,38 @@ class Processor:
         *,
         as_ubyte: bool = False,
         compress: bool = False,
+        roi_set: roi.RoiSet = None,
+        stamps=None,
+        metrics: pd.DataFrame = None,
     ):
         """Save annotated summary image for debugging/review.
 
-        Args:
-            chip_image: Processed chip image to summarize.
-            image: Source image path (used to mirror relative layout under summary_image_dir).
-            as_ubyte: If True, convert to uint8 before saving.
-            compress: If True and the output is TIFF, write with zlib compression.
+        Prefers RoiSet + render_summary when ``roi_set`` (and stamps) are provided.
         """
-        image = Path(image) if not isinstance(image, Path) else image
-        outpath = self.summary_image_dir / image.relative_to(self.experiment.root)
-        outpath.parent.mkdir(parents=True, exist_ok=True)
+        outpath = self._summary_outpath(image)
 
-        summary_image = chip_image.summary_image(stamptype=self.features)
-        if as_ubyte:
-            summary_image = skimage.img_as_ubyte(summary_image)
+        if roi_set is not None:
+            if stamps is None:
+                stamps = roi.stamps_from_chip(chip_image)
+            summary_image = roi.render_summary(
+                stamps, roi_set, features=self.features, metrics=metrics
+            )
+        else:
+            warnings.warn(
+                "Saving summary via ChipImage.summary_image is deprecated; "
+                "prefer RoiSet + render_summary.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if self.features == 'all':
+                # Legacy summary_image does not support 'all'; render chamber overlay only
+                summary_image = chip_image.summary_image(stamptype='chamber')
+            else:
+                summary_image = chip_image.summary_image(stamptype=self.features)
 
-        save_kwargs = {'check_contrast': False}
-        if compress and outpath.suffix.lower() in {'.tif', '.tiff'}:
-            save_kwargs['compression'] = 'zlib'
-
-        skimage.io.imsave(outpath, summary_image, **save_kwargs)
+        self._imsave_summary(
+            summary_image, outpath, as_ubyte=as_ubyte, compress=compress
+        )
 
     def set_corners(self, dname: str, corners: List[Tuple]):
         assert dname in self.experiment.devices, '{} not found in experiment.'.format(dname)
@@ -108,7 +141,6 @@ class Processor:
     ):
         """Set reference image for a device."""
 
-
         image = Path(image) if not isinstance(image, Path) else image
 
         # Get device number and corners via metadata lookup 
@@ -128,10 +160,20 @@ class Processor:
         self._process_features(chip_image, coerce_chamber_center, n_jobs=n_jobs)
         
         self._update_reference_image(dname, chip_image)
+        self._update_reference_roi(dname, chip_image)
 
         if save_summary_images:
+            roi_set = self.reference_rois[dname]
+            stamps = roi.stamps_from_chip(chip_image)
+            metrics = roi.quantify(stamps, roi_set, features=self.features)
             self._save_summary_image(
-                chip_image, image, as_ubyte=as_ubyte, compress=compress
+                chip_image,
+                image,
+                as_ubyte=as_ubyte,
+                compress=compress,
+                roi_set=roi_set,
+                stamps=stamps,
+                metrics=metrics,
             )
 
     def process(
@@ -179,7 +221,7 @@ class Processor:
         compress: bool = False,
         n_jobs: int = -1,
     ):
-        """Process images with manually provided corners."""
+        """Process images with manually provided corners (find per image, RoiSet quantify)."""
         data = []
         for i in tqdm(range(len(self.image_data)), desc='Processing images', leave=False):
 
@@ -188,15 +230,25 @@ class Processor:
             chip_image.stamp()
             self._process_features(chip_image, coerce_chamber_center, n_jobs=n_jobs)
 
-            processed_data = chip_image.summarize().reset_index()
+            roi_set = roi.RoiSet.from_chip(chip_image, self.features)
+            stamps = roi.stamps_from_chip(chip_image)
+            processed = roi.quantify(stamps, roi_set, features=self.features)
+            processed_data = processed.reset_index()
             metadata = pd.DataFrame([self.image_data.iloc[i]] * len(processed_data)).reset_index(drop=True)
             merged = pd.concat([metadata, processed_data], axis=1)
             data.append(merged)
             
             if save_summary_images:
                 self._save_summary_image(
-                    chip_image, image, as_ubyte=as_ubyte, compress=compress
+                    chip_image,
+                    image,
+                    as_ubyte=as_ubyte,
+                    compress=compress,
+                    roi_set=roi_set,
+                    stamps=stamps,
+                    metrics=processed,
                 )
+            del stamps
         
         return pd.concat(data, ignore_index=False)
 
@@ -207,33 +259,97 @@ class Processor:
         compress: bool = False,
         n_jobs: int = -1,
     ):
-        """Process images by mapping from reference images.
+        """Process images by mapping RoiSet geometry from reference images.
 
-        n_jobs is accepted for API symmetry with process()/manual finding but unused here
-        (features are mapped, not re-detected).
+        When n_jobs > 1 and save_summary_images is False, quantifies images in a
+        process pool. Summary rendering stays serial (needs stamp tensors).
         """
+
+        # Fast parallel path when not saving summaries
+        if (
+            not save_summary_images
+            and roi._resolve_n_jobs(n_jobs) > 1
+            and len(self.image_data) > 1
+        ):
+            return self._process_from_reference_parallel(
+                as_ubyte=as_ubyte,
+                compress=compress,
+                n_jobs=n_jobs,
+            )
 
         data = []
         for i in tqdm(range(len(self.image_data)), desc='Processing images', leave=False):
 
             dname, image = self.image_data[['dname', 'image_path']].iloc[i]
 
-            reference = self.reference_images.get(dname)
-            if reference is None:
-                raise ValueError(f"No reference image set for device {dname}. Call set_reference() first.")
-            
-            chip_image = chip.ChipImage(self.experiment.devices[dname], image, reference.corners)
-            chip_image.stamp()
-            reference.mapto(chip_image, features=self.features)
-            
-            processed_data = chip_image.summarize().reset_index()
+            roi_set = self.reference_rois.get(dname)
+            if roi_set is None:
+                raise ValueError(
+                    f"No reference RoiSet for device {dname}. Call set_reference() first."
+                )
+
+            stamps = roi.extract_stamps(image, roi_set)
+            processed = roi.quantify(stamps, roi_set, features=self.features)
+            processed_data = processed.reset_index()
             metadata = pd.DataFrame([self.image_data.iloc[i]] * len(processed_data)).reset_index(drop=True)
             merged = pd.concat([metadata, processed_data], axis=1)
             data.append(merged)
             
             if save_summary_images:
-                self._save_summary_image(
-                    chip_image, image, as_ubyte=as_ubyte, compress=compress
+                # Single-crop: reuse stamps for render (no ChipImage/mapto)
+                outpath = self._summary_outpath(image)
+                summary_image = roi.render_summary(
+                    stamps, roi_set, features=self.features, metrics=processed
+                )
+                self._imsave_summary(
+                    summary_image, outpath, as_ubyte=as_ubyte, compress=compress
                 )
 
+            del stamps
+
+        return pd.concat(data, ignore_index=False)
+
+    def _process_from_reference_parallel(
+        self,
+        as_ubyte: bool = False,
+        compress: bool = False,
+        n_jobs: int = -1,
+    ):
+        """Parallel quantify across images (no summary images)."""
+        # Group by device so each job gets the right RoiSet
+        rows = []
+        paths = []
+        rois = []
+        features_list = []
+        for i in range(len(self.image_data)):
+            dname, image = self.image_data[['dname', 'image_path']].iloc[i]
+            roi_set = self.reference_rois.get(dname)
+            if roi_set is None:
+                raise ValueError(
+                    f"No reference RoiSet for device {dname}. Call set_reference() first."
+                )
+            rows.append(i)
+            paths.append(image)
+            rois.append(roi_set)
+            features_list.append(self.features)
+
+        # If all same device, one RoiSet; else per-path (worker gets its roi)
+        workers = roi._resolve_n_jobs(n_jobs)
+        payloads = list(zip(paths, rois, features_list))
+        chunksize = max(1, len(payloads) // (workers * 4))
+        with roi._stamp_process_pool(workers) as executor:
+            dfs = list(
+                tqdm(
+                    executor.map(roi._quantify_image_worker, payloads, chunksize=chunksize),
+                    total=len(payloads),
+                    desc='Processing images',
+                    leave=False,
+                )
+            )
+
+        data = []
+        for i, processed in zip(rows, dfs):
+            processed_data = processed.reset_index()
+            metadata = pd.DataFrame([self.image_data.iloc[i]] * len(processed_data)).reset_index(drop=True)
+            data.append(pd.concat([metadata, processed_data], axis=1))
         return pd.concat(data, ignore_index=False)

@@ -240,6 +240,8 @@ class ChipImage:
         Maps the chamber and/or button parameters to the target ChipImage, and generates the
         Chamber and/or Button objects for those features.
 
+        Deprecated for Processor hot paths; prefer mercury.processing.roi.RoiSet + quantify.
+
         Arguments:
             (ChipImage) target:
             (str) features; features to map ('chamber', 'button', 'all')
@@ -248,6 +250,12 @@ class ChipImage:
             None
 
         """
+        warnings.warn(
+            "ChipImage.mapto is deprecated for processing pipelines; "
+            "use mercury.processing.roi.RoiSet and quantify() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
 
         dims = self.device.dims
         indices = [(i, j) for i in range(dims.x) for j in range(dims.y)]
