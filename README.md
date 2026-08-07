@@ -57,4 +57,42 @@ Done:
 
 Down the line:
 1. Default source of truth for overlap parameter should come from `imaging.csv`, not auto-calculated. Additionally, overlap should really be considered as a per-image parameter (or at least a shared parameter across images taken with the same settings).
-2. Prefetch + aggressive release + memmap/tiled writes
+2. Prefetch + aggressive release + memmap/tiled writes.
+
+### Processing
+
+#### Current Implementation
+- Stamp: a cropped pixel tile, not a mask. The class implemented in the processing module contains the tile data, the slice (the row and column slice that produced the tile in chip coordinates), the index (grid position on the device), and the identifier.
+- Feature finding code identifies buttons and/or chambers within stamps. 
+
+1. Parallelize across stamps for chamber/button finding.
+
+2. RoiSet-based mapping (replace mapto hot path)
+   - After feature finding / set_reference, build RoiSet:
+       slices, indices, ids,
+       chamber/button geometry + blank flags,
+       boolean masks [N,H,W] (True = inside ROI, same convention as circularSubsection today)
+   - quantify(path|memmap, roi) -> DataFrame
+       extract stamps [N,H,W];
+       vectorized sum/mean/std; median in a loop over N;
+       emit same columns as Chamber/Button.summarize (incl. BG-sub, annulus)
+       for failures, NaN rows (same as BlankChamber / BlankButton)
+   - render_summary(stamps, roi, metrics=None) -> image
+       annotate from geometry (+ optional metric text); stitch; no Chamber/Button
+       enable annotation of both chamber / button features if 'all' is passed
+   - Processor._process_from_reference:
+       single crop → quantify → (if save_summary_images) render → free stamps
+       do not keep full ChipImage / mapto on this path
+   - Keep ChipImage.mapto / summary_image for now; deprecate later
+   - v1: serial over images; image-level pool as follow-up
+   - Test: legacy mapto+summarize vs quantify; unity scatter (reuse processing_compare)
+   - Prefer `processing/roi.py` to prevent bloating of `chip.py`.
+   - Down the line: ensure that RoiSet to quantify to render summary is the standard. No need to do this immediately.
+
+3. Optimize button finding.
+    - Remove unused copy of cicularSubsection; cut deepcopy in button search.
+    - Vectorize the course grid search
+    - Update 110 to the actual shape (100)
+
+4. Abstract `roi.py`
+    - Abstract classes. For each geometry, specify headers and metric calculation functions
