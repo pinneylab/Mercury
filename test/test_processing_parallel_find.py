@@ -1,11 +1,24 @@
 """Unit tests for parallel chamber/button finding across stamps."""
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
+import pytest
 from skimage import io
 
 from mercury.processing.chip import ChipImage, Stamp, _resolve_n_jobs
 from mercury.processing.experiment import Device, read_pinlist
+
+from processing_compare import (
+    BUTTON_VALUE_COLS,
+    DEFAULT_CORNERS,
+    DEFAULT_IMAGE,
+    compare_summaries,
+    make_chip,
+    plot_unity_scatter,
+    run_feature_find,
+)
 
 
 def _make_pinlist(nx: int, ny: int) -> pd.DataFrame:
@@ -92,27 +105,29 @@ def test_find_chambers_serial_matches_parallel(tmp_path):
         assert s_serial.chamber.radius == s_parallel.chamber.radius
 
 
-def test_find_buttons_serial_matches_parallel(tmp_path):
-    nx, ny = 2, 2
-    stamps = np.empty((nx, ny), dtype=object)
-    for x in range(nx):
-        for y in range(ny):
-            stamps[x, y] = _bright_disk_stamp(
-                radius=12, center=(45 + x, 52 + y), peak=50000
-            )
+@pytest.mark.slow
+def test_find_buttons_serial_vs_parallel_real_image(tmp_path):
+    """Pre (n_jobs=1) vs post (n_jobs=2) button find on a real chip image."""
+    if not DEFAULT_IMAGE.exists():
+        pytest.skip(f"Regression image not found at {DEFAULT_IMAGE}")
 
-    chip_serial = _build_chip_with_stamps(tmp_path / "serial_btn", stamps)
-    chip_parallel = _build_chip_with_stamps(tmp_path / "parallel_btn", stamps)
+    chip_base = make_chip(DEFAULT_IMAGE, DEFAULT_CORNERS)
+    df_base = run_feature_find(chip_base, feature="button", n_jobs=1)
 
-    chip_serial.findButtons(n_jobs=1)
-    chip_parallel.findButtons(n_jobs=2)
+    chip_new = make_chip(DEFAULT_IMAGE, DEFAULT_CORNERS)
+    df_new = run_feature_find(chip_new, feature="button", n_jobs=2)
 
-    for s_serial, s_parallel in zip(
-        chip_serial.stamps.flatten(), chip_parallel.stamps.flatten()
-    ):
-        assert s_serial.button.blankFlag == s_parallel.button.blankFlag
-        if s_serial.button.blankFlag:
-            continue
-        assert s_serial.button.center == s_parallel.button.center
-        assert s_serial.button.disk_radius == s_parallel.button.disk_radius
-        assert s_serial.button.annulus_radii == s_parallel.button.annulus_radii
+    compare_summaries(df_base, df_new, BUTTON_VALUE_COLS, atol=0.0, rtol=0.0)
+
+    outpath = tmp_path / "button_find_parallel_unity.png"
+    plot_unity_scatter(
+        df_base,
+        df_new,
+        col="summed_button_BGsub",
+        outpath=outpath,
+        title="Button find: parallel vs serial (summed_button_BGsub)",
+        xlabel="serial n_jobs=1",
+        ylabel="parallel n_jobs=2",
+    )
+    assert outpath.exists() and outpath.stat().st_size > 0
+    print(f"Unity scatter written to {outpath}")
