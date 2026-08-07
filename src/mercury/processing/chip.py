@@ -535,6 +535,7 @@ class Stamp:
 
         """
 
+        # TODO: imageCopy is unecessary- drop it
         imageCopy = img.copy()
         mask = np.zeros(imageCopy.shape)
         cv2.circle(mask, center, radius, 1, -1)  # Warning: MODIFIES mask IN PLACE!!
@@ -674,6 +675,7 @@ class Stamp:
         ######## DEFAULTS ########
         searchSpacing = 7
         radius = 15  # was 2x2 = 15, 4x4 = 7
+        # TODO: align tile width and height with stampWidth
         tileWidth = 110
         tileHeight = 110
         refiningRange = 7
@@ -691,6 +693,7 @@ class Stamp:
 
         boundingInset = int(tileWidth * boundingInsetRatio)
 
+        # TODO: for crude initial fit, precompute one template
         # Crude initial fit of center position (sparse initial serach grid, entire image stamp) by maximizing summed intensity
         for xIndex in range(boundingInset, tileWidth - boundingInset, searchSpacing):
             for yIndex in range(
@@ -701,6 +704,7 @@ class Stamp:
                 )
                 summedI = np.nansum(features["intensities"])
                 if summedI > maxI:
+                    # TODO: deepcopy also unnecessary here
                     maxI = deepcopy(summedI)
                     bestSpotParams = deepcopy(features)
 
