@@ -57,4 +57,24 @@ Done:
 
 Down the line:
 1. Default source of truth for overlap parameter should come from `imaging.csv`, not auto-calculated. Additionally, overlap should really be considered as a per-image parameter (or at least a shared parameter across images taken with the same settings).
-2. Prefetch + aggressive release + memmap/tiled writes
+2. Prefetch + aggressive release + memmap/tiled writes.
+
+### Processing
+
+#### Current Implementation
+- Stamp: a cropped pixel tile, not a mask. The class implemented in the processing module contains the tile data, the slice (the row and column slice that produced the tile in chip coordinates), the index (grid position on the device), and the identifier.
+- Feature finding code identifies buttons and/or chambers within stamps. 
+
+1. Parallelize across stamps for chamber/button finding.
+
+2. Vectorize stamp mapping across a batch dimension. Consider the following approach:
+    - After `set_reference`, pre-build boolean masks for the chamber, button, and annulus  ([N, H, W]).
+    - Load target image via memmap, get stamps [N, H, W], vectorized reductions via the masks, then calculate per-stamp median, sum, and std
+        - sum/std can be vectorized, stick to loop for median
+    - Free aggressively. Do not keep the full chip image after the row is appended to the `csv`. Don't keep the full stitch once stamps are cropped (or never materialized and use memmap + slice). Delete stamps to free up memory, if needed.
+    - Can parallelize the above process across chip images. 
+
+3. Optimize button finding.
+    - Remove unused copy of cicularSubsection; cut deepcopy in button search.
+    - Vectorize the course grid search
+    - Update 110 to the actual shape (100)
