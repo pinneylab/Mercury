@@ -174,7 +174,7 @@ class ImageStitcher:
         self.stitched_image_data = None
         self.setup = set(self.raster_data['setup'].tolist()).pop()
         
-    def load_raster_data() -> pd.DataFrame:
+    def load_raster_data(self) -> pd.DataFrame:
         """Loads and parses `imaging.csv` manifest data from root directory.
 
         Returns:
@@ -609,7 +609,6 @@ class BackgroundSubtractor:
 
         # input sanity check
         background_images = self._background_image_check(background_images)
-
         bgsub_data = []
         grouped = self.stitched_image_data.groupby(by=settings_to_match, dropna=False)
 
@@ -676,8 +675,10 @@ class BackgroundSubtractor:
                              
             print("{successes} / {total} images were successfully background subtracted".format(successes=(success_mask).sum(), total=len(success_mask)))
             print()
-            # update failure rows
-            group.loc[~success_mask, 'column_name'] = None
+            
+            if not group.empty:
+                # update failure rows
+                group.loc[~success_mask, 'column_name'] = None
             bgsub_data.append(group)
 
         if not dry_run:
