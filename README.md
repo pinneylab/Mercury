@@ -41,7 +41,7 @@ Then, install the package to your conda environment using:
 
 ## Processing and Analyzing Data
 
-Our processing and analysis is done in Jupyter notebooks. To get started, download the [latest release](https://github.com/pinneylab/mercury_notebooks/releases/latest) of our notebooks repo.
+Our processing and analysis is done in Jupyter notebooks. To get started, download the [latest release](https://github.com/pinneylab/htbam_notebooks/releases/latest) of our notebooks repo.
 
 Then in your conda environment, start the Jupyter server with the command `jupyter notebook`.
 
