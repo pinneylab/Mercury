@@ -37,7 +37,11 @@ def _format_column_name(base_name: str, unit: Optional[pint.Unit], include_units
     if not unit_str or unit_str == "dimensionless":
         return base_name
 
+    # Normalize micro sign (U+00B5) to standard Greek mu (U+03BC) for consistent headers across Pint versions
+    unit_str = unit_str.replace("\u00b5", "\u03bc")
+
     return f"{base_name} ({unit_str})"
+
 
 
 def data_to_dataframe(

@@ -77,7 +77,7 @@ def load_run_from_csv(
     L = copy(CSV_DATA_LABELS) # shorthand for labels dict.
     # Add units for time, and stdcurve concentration labels:
     L['time'] += f"{time_unit:~}"
-    L['standardcurve_concentration'] += f"{conc_unit:~}".replace('µ', 'u') # cleans up uM
+    L['standardcurve_concentration'] += f"{conc_unit:~}".replace('\u03bc', 'u').replace('\u00b5', 'u') # cleans up uM
 
     # Handle legacy vs new time column names
     if 'time' in df.columns:
