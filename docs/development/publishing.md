@@ -8,7 +8,21 @@ This guide covers how to bump versions, build distribution artifacts, publish of
 
 When new features or bug fixes on `main` are ready to be distributed to lab members and the public, follow the release lifecycle below.
 
-### Step 1: Version Bumping
+### Step 1: Pre-Release Verification (`unittest` & `pytest`)
+
+Before bumping the version or building distribution artifacts, verify that all unit and integration tests pass cleanly:
+
+```bash
+# 1. Run the fast unit test suite (validates data models, fits, transforms, and I/O)
+python -m unittest discover -s test -p "test*.py" -v
+
+# 2. Run the end-to-end integration test suite
+pytest test/test_analysis_e2e.py
+```
+
+Ensure all tests pass with zero errors or regressions before proceeding to package the release.
+
+### Step 2: Version Bumping
 
 Mercury follows [Semantic Versioning](https://semver.org/) (`MAJOR.MINOR.PATCH`).
 Update the version number in [`pyproject.toml`](file:///home/freitas/workspace/Mercury_Code_Development/Mercury/pyproject.toml):
@@ -27,7 +41,7 @@ git commit -m "Bump version to 2.0.2"
 git push origin main
 ```
 
-### Step 2: Build Release Packages Locally
+### Step 3: Build Release Packages Locally
 
 Verify that the packaging build succeeds and produces clean distribution artifacts:
 
@@ -53,7 +67,7 @@ pip install dist/mercury_kinetics-2.0.2-py3-none-any.whl
 python -c "import mercury; print(mercury.__version__)"
 ```
 
-### Step 3: Tag the Release in Git
+### Step 4: Tag the Release in Git
 
 Tag the commit corresponding to the release:
 
@@ -62,7 +76,7 @@ git tag -a v2.0.2 -m "Release v2.0.2: summary of major changes"
 git push origin v2.0.2
 ```
 
-### Step 4: Create a GitHub Release
+### Step 5: Create a GitHub Release
 
 1. Go to [github.com/pinneylab/Mercury/releases](https://github.com/pinneylab/Mercury/releases).
 2. Click **Draft a new release**.
@@ -173,9 +187,13 @@ This compiles high-resolution, 2× scale PNGs (`analysis_pipeline.png`, `process
 
 ### Building and Validating the Site
 
-Before publishing, verify that all internal links, docstrings, and images compile without error:
+Before publishing, verify that all tests pass and that all internal links, docstrings, and images compile without error:
 
 ```bash
+# 1. Verify code and docstring integrity
+python -m unittest discover -s test -p "test*.py" -v
+
+# 2. Test static site compilation
 mkdocs build
 ```
 

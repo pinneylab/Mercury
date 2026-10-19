@@ -212,7 +212,7 @@ def parse_concentration(conc_str: str, unit: pint.Unit) -> float:
         return float(conc_str)
         
     #first, remove the unit and everything following
-    unit_str = f"{unit:~}".replace('µ', 'u')
+    unit_str = f"{unit:~}".replace('\u03bc', 'u').replace('\u00b5', 'u')
     conc = str(conc_str).split(unit_str)[0]
     #concentration number uses underscore as decimal point. Here, we replace and convert to a float:
     conc = float(conc.replace("_", "."))

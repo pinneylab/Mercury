@@ -242,7 +242,10 @@ git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </
 3. Review and run the generated tests locally to ensure they pass.</p>
 <h3 id="running-tests-locally">Running Tests Locally</h3>
 <p>Run the test suite before committing:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Run all tests</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run fast unittest test suite (discovers all unittest.TestCase classes)</span>
+python<span class="w"> </span>-m<span class="w"> </span>unittest<span class="w"> </span>discover<span class="w"> </span>-s<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;test*.py&quot;</span><span class="w"> </span>-v
+
+<span class="c1"># Run all pytest tests</span>
 pytest<span class="w"> </span>test/
 
 <span class="c1"># Run a specific test file</span>
@@ -275,7 +278,7 @@ git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </sp
 </ol>
 <h3 id="continuous-integration-ci-review">Continuous Integration (CI) &amp; Review</h3>
 <ul>
-<li><strong>Automated CI</strong>: GitHub Actions (<code>.github/workflows/ci.yml</code>) will automatically trigger and run the test suite across supported Python environments.</li>
+<li><strong>Automated CI</strong>: GitHub Actions (<code>.github/workflows/ci.yml</code>) will automatically trigger and run the test suite across supported Python environments. Verify all tests pass and that the PyPi build is deployed!</li>
 <li><strong>Code Review</strong>: Because <code>main</code> is a protected branch, at least one other lab member must review and approve your PR.</li>
 <li><strong>Merge</strong>: Once CI passes and approval is received, use <strong>Squash and merge</strong> (or rebase merge) to merge your branch into <code>main</code>, keeping git history clean.</li>
 </ul>

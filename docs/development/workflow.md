@@ -122,7 +122,10 @@ LLMs (such as Antigravity/Gemini) are very effective for generating comprehensiv
 Run the test suite before committing:
 
 ```bash
-# Run all tests
+# Run fast unittest test suite (discovers all unittest.TestCase classes)
+python -m unittest discover -s test -p "test*.py" -v
+
+# Run all pytest tests
 pytest test/
 
 # Run a specific test file
@@ -165,6 +168,6 @@ git push -u origin feature/your-feature-name
 
 ### Continuous Integration (CI) & Review
 
-- **Automated CI**: GitHub Actions (`.github/workflows/ci.yml`) will automatically trigger and run the test suite across supported Python environments.
+- **Automated CI**: GitHub Actions (`.github/workflows/ci.yml`) will automatically trigger and run the test suite across supported Python environments. Verify all tests pass and that the PyPi build is deployed!
 - **Code Review**: Because `main` is a protected branch, at least one other lab member must review and approve your PR.
 - **Merge**: Once CI passes and approval is received, use **Squash and merge** (or rebase merge) to merge your branch into `main`, keeping git history clean.
