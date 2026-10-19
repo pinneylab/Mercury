@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://pinneylab.github.io/mercury/guides/notebook_processing/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Image Processing & Quantification - Mercury Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+        <link href="../../css/custom.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Image Processing \u0026 Quantification";
+        var mkdocs_page_input_path = "guides/notebook_processing.md";
+        var mkdocs_page_url = "/mercury/guides/notebook_processing/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Mercury Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Overview</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../quickstart/">Quickstart</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Notebook Tutorials</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../notebook_analysis/">Michaelis–Menten Analysis & QC</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Image Processing & Quantification</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#overview-of-the-image-processing-pipeline">Overview of the Image Processing Pipeline</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#1-directory-structure-required-metadata">1. Directory Structure &amp; Required Metadata</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2-image-stitching-imagestitcher">2. Image Stitching (ImageStitcher)</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#optional-testing-rotation-angles">(Optional) Testing Rotation Angles</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#running-stitching">Running Stitching</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3-background-subtraction-backgroundsubtractor">3. Background Subtraction (BackgroundSubtractor)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#4-initializing-experiment-device-geometry">4. Initializing Experiment &amp; Device Geometry</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#5-chamber-alignment-corner-picking-pick-corners">5. Chamber Alignment &amp; Corner Picking (pick-corners)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#6-feature-extraction-quantification">6. Feature Extraction &amp; Quantification</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#a-button-quantification-protein-expression">A. Button Quantification (Protein Expression)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#b-product-standard-curves">B. Product Standard Curves</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#c-kinetic-reaction-series">C. Kinetic Reaction Series</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#transition-to-downstream-analysis">Transition to Downstream Analysis</a>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Module Guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../processing/">Image Processing & Chips</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../stitching/">Image Stitching</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../db_api/">Database API & Data I/O</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../analysis/">Analysis & Fitting</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/analysis/">mercury.analysis</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/db_api/">mercury.db_api</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/processing/">mercury.processing</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/stitching/">mercury.stitching</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/scripts/">mercury.scripts</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../cli/">CLI Reference</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Mercury Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Notebook Tutorials</li>
+      <li class="breadcrumb-item active">Image Processing & Quantification</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/pinneylab/Mercury/edit/master/docs/guides/notebook_processing.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="image-processing-quantification-walkthrough">Image Processing &amp; Quantification Walkthrough</h1>
+<p>This guide provides a comprehensive walkthrough for converting raw, tiled microscopy images from high-throughput microfluidic experiments (HT-BAM / HT-MEK) into the calibrated fluorescence tables used for downstream kinetic analysis, based on <a href="https://github.com/pinneylab/mercury_notebooks/blob/main/htbam_notebooks/process.ipynb"><code>htbam_notebooks/process.ipynb</code></a>.</p>
+<hr />
+<h2 id="overview-of-the-image-processing-pipeline">Overview of the Image Processing Pipeline</h2>
+<p><img alt="Mercury Image Processing Pipeline" src="../../images/processing_pipeline.png" /></p>
+<hr />
+<h2 id="1-directory-structure-required-metadata">1. Directory Structure &amp; Required Metadata</h2>
+<p>The processing workflow expects an acquisition folder organized according to the standard automated microscopy protocol:</p>
+<div class="highlight"><pre><span></span><code>experiment_root/
+├── imaging.csv               # Master acquisition metadata (rasters, exposures, channels)
+├── raw_images/               # Subfolders for each acquisition raster
+│   ├── 2026-05-10_00-13-33_kinetic_series_MM_Kinetics/
+│   │   ├── series_index.json # Series coordinate index and timing
+│   │   └── tile_001.tif, tile_002.tif, ...
+│   └── ...
+└── pinlists/                 # (Optional) Device chamber-to-sample mapping files
+    └── device_pinlist.csv
+</code></pre></div>
+<hr />
+<h2 id="2-image-stitching-imagestitcher">2. Image Stitching (<code>ImageStitcher</code>)</h2>
+<p>Raw microscope images are acquired as overlapping 2D tiles. <code>ImageStitcher</code> orchestrates raster stitching, automatic rotation correction, and overlap alignment:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mercury.stitching</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageStitcher</span>
+
+<span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s1">&#39;/path/to/experiment_root&#39;</span><span class="p">)</span>
+<span class="n">stitcher</span> <span class="o">=</span> <span class="n">ImageStitcher</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="optional-testing-rotation-angles">(Optional) Testing Rotation Angles</h3>
+<p>Microscope camera orientation may be slightly offset from the chip axis. You can evaluate candidate rotation angles on a reference image:</p>
+<div class="highlight"><pre><span></span><code><span class="n">stitcher</span><span class="o">.</span><span class="n">test_stitching_rotations</span><span class="p">(</span>
+    <span class="n">raster_path</span><span class="o">=</span><span class="n">root</span> <span class="o">/</span> <span class="s1">&#39;raw_images/2026-05-09_16-58-08_pre_button_quant_brightfield&#39;</span><span class="p">,</span>
+    <span class="n">rotations</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">,</span> <span class="mf">1.6</span><span class="p">,</span> <span class="mf">1.8</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">],</span>
+    <span class="n">acqui_origin</span><span class="o">=</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span>
+    <span class="n">outdir</span><span class="o">=</span><span class="n">root</span> <span class="o">/</span> <span class="s1">&#39;stitch_test&#39;</span>
+<span class="p">)</span>
+</code></pre></div>
+<h3 id="running-stitching">Running Stitching</h3>
+<p>Stitch the entire experiment dataset:</p>
+<div class="highlight"><pre><span></span><code><span class="n">stitcher</span><span class="o">.</span><span class="n">stitch_images</span><span class="p">(</span>
+    <span class="n">rotation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>                       <span class="c1"># None enables automatic rotation optimization</span>
+    <span class="n">get_rotation_from</span><span class="o">=</span><span class="s1">&#39;*brightfield*&#39;</span><span class="p">,</span>   <span class="c1"># Brightfield channels provide the best features for rotation</span>
+    <span class="n">acqui_origin</span><span class="o">=</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>           <span class="c1"># Microscope stage origin orientation</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Stitched full-device images are written to <code>root / 'stitched_images'</code>.</p>
+<hr />
+<h2 id="3-background-subtraction-backgroundsubtractor">3. Background Subtraction (<code>BackgroundSubtractor</code>)</h2>
+<p>Autofluorescence, illumination gradients, and optical noise must be subtracted by pairing assay images with channel-matched dark images:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mercury.stitching</span><span class="w"> </span><span class="kn">import</span> <span class="n">BackgroundSubtractor</span>
+
+<span class="c1"># Specify paths to reference background images for each channel:</span>
+<span class="n">background_images</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">root</span> <span class="o">/</span> <span class="s1">&#39;stitched_images/cyan_button_quant_background.tif&#39;</span><span class="p">,</span>
+    <span class="n">root</span> <span class="o">/</span> <span class="s1">&#39;stitched_images/green_mscarlet_background.tif&#39;</span><span class="p">,</span>
+    <span class="n">root</span> <span class="o">/</span> <span class="s1">&#39;stitched_images/UV340_nadh_background.tif&#39;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">subtractor</span> <span class="o">=</span> <span class="n">BackgroundSubtractor</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+<span class="n">subtractor</span><span class="o">.</span><span class="n">background_subtract_images</span><span class="p">(</span>
+    <span class="n">background_images</span><span class="o">=</span><span class="n">background_images</span><span class="p">,</span>
+    <span class="n">grouping_keys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;channel&#39;</span><span class="p">,</span> <span class="s1">&#39;exposure&#39;</span><span class="p">]</span>  <span class="c1"># Match raw images to backgrounds by optical configuration</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Corrected images are written to <code>root / 'bg_subtracted_images'</code>.</p>
+<hr />
+<h2 id="4-initializing-experiment-device-geometry">4. Initializing Experiment &amp; Device Geometry</h2>
+<p>Register physical microfluidic devices and pinlist metadata:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mercury.processing.experiment</span><span class="w"> </span><span class="kn">import</span> <span class="n">Experiment</span><span class="p">,</span> <span class="n">Device</span><span class="p">,</span> <span class="n">DataHandler</span>
+
+<span class="n">experiment</span> <span class="o">=</span> <span class="n">Experiment</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+
+<span class="c1"># Define chip grid geometry (e.g. 32 rows x 56 columns = 1,792 chambers)</span>
+<span class="n">d1</span> <span class="o">=</span> <span class="n">Device</span><span class="p">(</span>
+    <span class="n">setup</span><span class="o">=</span><span class="s1">&#39;s1&#39;</span><span class="p">,</span> 
+    <span class="n">dname</span><span class="o">=</span><span class="s1">&#39;d3&#39;</span><span class="p">,</span>                <span class="c1"># Must match device name recorded during acquisition</span>
+    <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="mi">32</span><span class="p">,</span> <span class="mi">56</span><span class="p">),</span> 
+    <span class="n">pinlist_path</span><span class="o">=</span><span class="s1">&#39;pinlists/chip_pinlist.csv&#39;</span>
+<span class="p">)</span>
+
+<span class="n">experiment</span><span class="o">.</span><span class="n">register_device</span><span class="p">(</span><span class="n">d1</span><span class="p">)</span>
+<span class="n">data_handler</span> <span class="o">=</span> <span class="n">DataHandler</span><span class="p">(</span><span class="n">experiment</span><span class="p">)</span>
+
+<span class="c1"># Print discovered image series identifiers</span>
+<span class="n">data_handler</span><span class="o">.</span><span class="n">list_identifiers</span><span class="p">()</span>
+</code></pre></div>
+<hr />
+<h2 id="5-chamber-alignment-corner-picking-pick-corners">5. Chamber Alignment &amp; Corner Picking (<code>pick-corners</code>)</h2>
+<p>To locate reaction chambers on the stitched overview images, physical chip corners are defined using the interactive GUI utility:</p>
+<div class="highlight"><pre><span></span><code>pick-corners<span class="w"> </span>--image<span class="w"> </span>stitched_images/reference_brightfield.tif<span class="w"> </span>--output<span class="w"> </span>corners.json
+</code></pre></div>
+<p>In the interactive window:
+1. Zoom in and click the center of the <strong>top-left</strong>, <strong>top-right</strong>, <strong>bottom-left</strong>, and <strong>bottom-right</strong> microfluidic fiducial chambers.
+2. The coordinate transformation maps the rectangular chip model onto physical image pixels.</p>
+<hr />
+<h2 id="6-feature-extraction-quantification">6. Feature Extraction &amp; Quantification</h2>
+<p>With corners defined, use <code>Processor</code> to extract intensities for protein loading, standard curves, and kinetic series.</p>
+<h3 id="a-button-quantification-protein-expression">A. Button Quantification (Protein Expression)</h3>
+<p>Extract fluorescence at antibody/bait spots under the button valves:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mercury.processing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Processor</span>
+
+<span class="n">button_images</span> <span class="o">=</span> <span class="n">data_handler</span><span class="o">.</span><span class="n">get_images</span><span class="p">(</span><span class="n">identifiers</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;button_quant_run_id&#39;</span><span class="p">])</span>
+
+<span class="c1"># Measure button ROIs</span>
+<span class="n">button_processor</span> <span class="o">=</span> <span class="n">Processor</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="n">image_data</span><span class="o">=</span><span class="n">button_images</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="s1">&#39;button&#39;</span><span class="p">)</span>
+<span class="n">button_processor</span><span class="o">.</span><span class="n">set_corners</span><span class="p">(</span><span class="n">corners_file</span><span class="o">=</span><span class="s1">&#39;corners.json&#39;</span><span class="p">)</span>
+
+<span class="n">button_df</span> <span class="o">=</span> <span class="n">button_processor</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">use_reference</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">button_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="s1">&#39;button_quant.csv&#39;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="b-product-standard-curves">B. Product Standard Curves</h3>
+<p>Extract fluorescence across calibrated product concentrations:</p>
+<div class="highlight"><pre><span></span><code><span class="n">standard_images</span> <span class="o">=</span> <span class="n">data_handler</span><span class="o">.</span><span class="n">get_images</span><span class="p">(</span><span class="n">identifiers</span><span class="o">=</span><span class="s1">&#39;standard_curve_run_id&#39;</span><span class="p">)</span>
+
+<span class="n">standard_processor</span> <span class="o">=</span> <span class="n">Processor</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="n">image_data</span><span class="o">=</span><span class="n">standard_images</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="s1">&#39;chamber&#39;</span><span class="p">)</span>
+<span class="n">standard_processor</span><span class="o">.</span><span class="n">set_corners</span><span class="p">(</span><span class="n">corners_file</span><span class="o">=</span><span class="s1">&#39;corners.json&#39;</span><span class="p">)</span>
+
+<span class="n">standard_df</span> <span class="o">=</span> <span class="n">standard_processor</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">use_reference</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">standard_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="s1">&#39;standard_data.csv.bz2&#39;</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s1">&#39;bz2&#39;</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="c-kinetic-reaction-series">C. Kinetic Reaction Series</h3>
+<p>Extract reaction progress time-series across substrate concentrations:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="n">kinetics_images</span> <span class="o">=</span> <span class="n">data_handler</span><span class="o">.</span><span class="n">get_images</span><span class="p">(</span><span class="n">identifiers</span><span class="o">=</span><span class="s1">&#39;kinetics_series_run_id&#39;</span><span class="p">)</span>
+
+<span class="n">kinetics_processor</span> <span class="o">=</span> <span class="n">Processor</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="n">image_data</span><span class="o">=</span><span class="n">kinetics_images</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="s1">&#39;chamber&#39;</span><span class="p">)</span>
+<span class="n">kinetics_processor</span><span class="o">.</span><span class="n">set_corners</span><span class="p">(</span><span class="n">corners_file</span><span class="o">=</span><span class="s1">&#39;corners.json&#39;</span><span class="p">)</span>
+
+<span class="n">kinetics_df</span> <span class="o">=</span> <span class="n">kinetics_processor</span><span class="o">.</span><span class="n">process</span><span class="p">(</span><span class="n">use_reference</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="c1"># If multiple kinetic sets were collected, concatenate them:</span>
+<span class="c1"># kinetics_merged = pd.concat([kinetics_df_1, kinetics_df_2], ignore_index=True)</span>
+
+<span class="n">kinetics_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="s1">&#39;kinetics_data.csv.bz2&#39;</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s1">&#39;bz2&#39;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="transition-to-downstream-analysis">Transition to Downstream Analysis</h2>
+<p>Once <code>button_quant.csv</code>, <code>standard_data.csv.bz2</code>, and <code>kinetics_data.csv.bz2</code> are generated in your experiment directory, proceed to the <a href="../notebook_analysis/">Michaelis–Menten Analysis Guide</a> to fit reaction velocities, apply quality filters, and derive catalytic constants.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../notebook_analysis/" class="btn btn-neutral float-left" title="Michaelis–Menten Analysis & QC"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../processing/" class="btn btn-neutral float-right" title="Image Processing & Chips">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/pinneylab/Mercury" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../notebook_analysis/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../processing/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

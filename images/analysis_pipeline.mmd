@@ -1,0 +1,15 @@
+graph TD
+    classDef default fill:#f8f9fa,stroke:#495057,stroke-width:1.5px,color:#212529,font-family:sans-serif,font-size:13px;
+    classDef highlight fill:#e7f5ff,stroke:#1971c2,stroke-width:2px,color:#0c8599,font-weight:bold;
+    classDef export fill:#ebfbee,stroke:#2f9e44,stroke-width:2px,color:#2b8a3e,font-weight:bold;
+
+    A["<div style='min-width: 240px; padding: 2px 8px;'><b>Raw Input Tables</b><br>• button_quant.csv<br>• standard_data.csv.bz2<br>• kinetics_data.csv.bz2</div>"]:::highlight --> B["<div style='min-width: 290px; padding: 2px 8px;'><b>1. Connect DB API</b><br>LocalMercuryDBAPI &amp; MercuryExperiment</div>"]
+    B --> C["<b>2. Calibrate Enzyme [E]</b><br>transform_data (RFU → nM)"]
+    B --> D["<b>3. Fit Product Standards</b><br>fit_luminance_vs_concentration"]
+    D & B --> E["<b>4. Fit Initial Rates (V₀)</b><br>Convert RFU → [Product] &amp; fit_concentration_vs_time"]
+    E --> F["<b>5. Background Rate Subtraction</b><br>25th percentile of buffer / meGFP wells"]
+    F --> G["<b>6. Multi-Stage QC Filtering</b><br>R² cutoffs, positive slopes, expression, min points"]
+    G --> H["<b>7. Fit Michaelis–Menten Model</b><br>fit_initial_rates_vs_concentration_with_function"]
+    H & C --> I["<b>8. Normalize by [E]</b><br>Calculate kcat = Vmax / [E] and V₀ / [E]"]
+    I --> J["<b>9. Replicate Outlier Filtering</b><br>Z-score filter on KM, kcat, and [E]"]
+    J --> K["<div style='min-width: 260px; padding: 2px 8px;'><b>10. Export Results &amp; Diagnostics</b><br>• MM_sample_data.csv<br>• MM_chamber_data.csv<br>• mm_sample_subplots.pdf</div>"]:::export

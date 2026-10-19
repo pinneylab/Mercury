@@ -1,0 +1,12 @@
+graph TD
+    classDef default fill:#f8f9fa,stroke:#495057,stroke-width:1.5px,color:#212529,font-family:sans-serif,font-size:13px;
+    classDef highlight fill:#e7f5ff,stroke:#1971c2,stroke-width:2px,color:#0c8599,font-weight:bold;
+    classDef export fill:#ebfbee,stroke:#2f9e44,stroke-width:2px,color:#2b8a3e,font-weight:bold;
+
+    A["<b>Microscopy Acquisition</b><br>• raw_images/<br>• imaging.csv<br>• series_index.json"]:::highlight --> B["<b>1. Stitch Images</b><br>ImageStitcher (auto rotation &amp; overlap)"]
+    B --> C["<b>2. Subtract Backgrounds</b><br>BackgroundSubtractor (matched optical channels)"]
+    C --> D["<b>3. Device &amp; Layout Setup</b><br>Experiment, Device (32x56), &amp; Pinlist"]
+    D --> E["<b>4. Chamber Corner Alignment</b><br>pick-corners GUI tool"]
+    E --> F["<b>5. Button Quantification</b><br>Processor(features='button') → button_quant.csv"]:::export
+    E --> G["<b>6. Standard Curve Quantification</b><br>Processor(features='chamber') → standard_data.csv.bz2"]:::export
+    E --> H["<b>7. Kinetic Series Quantification</b><br>Processor(features='chamber') → kinetics_data.csv.bz2"]:::export
