@@ -64,13 +64,15 @@
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#1-creating-a-release">1. Creating a Release</a>
         <ul>
-    <li class="toctree-l3"><a class="reference internal" href="#step-1-version-bumping">Step 1: Version Bumping</a>
+    <li class="toctree-l3"><a class="reference internal" href="#step-1-pre-release-verification-unittest-pytest">Step 1: Pre-Release Verification (unittest &amp; pytest)</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#step-2-build-release-packages-locally">Step 2: Build Release Packages Locally</a>
+    <li class="toctree-l3"><a class="reference internal" href="#step-2-version-bumping">Step 2: Version Bumping</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#step-3-tag-the-release-in-git">Step 3: Tag the Release in Git</a>
+    <li class="toctree-l3"><a class="reference internal" href="#step-3-build-release-packages-locally">Step 3: Build Release Packages Locally</a>
     </li>
-    <li class="toctree-l3"><a class="reference internal" href="#step-4-create-a-github-release">Step 4: Create a GitHub Release</a>
+    <li class="toctree-l3"><a class="reference internal" href="#step-4-tag-the-release-in-git">Step 4: Tag the Release in Git</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#step-5-create-a-github-release">Step 5: Create a GitHub Release</a>
     </li>
         </ul>
     </li>
@@ -157,7 +159,16 @@
 <hr />
 <h2 id="1-creating-a-release">1. Creating a Release</h2>
 <p>When new features or bug fixes on <code>main</code> are ready to be distributed to lab members and the public, follow the release lifecycle below.</p>
-<h3 id="step-1-version-bumping">Step 1: Version Bumping</h3>
+<h3 id="step-1-pre-release-verification-unittest-pytest">Step 1: Pre-Release Verification (<code>unittest</code> &amp; <code>pytest</code>)</h3>
+<p>Before bumping the version or building distribution artifacts, verify that all unit and integration tests pass cleanly:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Run the fast unit test suite (validates data models, fits, transforms, and I/O)</span>
+python<span class="w"> </span>-m<span class="w"> </span>unittest<span class="w"> </span>discover<span class="w"> </span>-s<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;test*.py&quot;</span><span class="w"> </span>-v
+
+<span class="c1"># 2. Run the end-to-end integration test suite</span>
+pytest<span class="w"> </span>test/test_analysis_e2e.py
+</code></pre></div>
+<p>Ensure all tests pass with zero errors or regressions before proceeding to package the release.</p>
+<h3 id="step-2-version-bumping">Step 2: Version Bumping</h3>
 <p>Mercury follows <a href="https://semver.org/">Semantic Versioning</a> (<code>MAJOR.MINOR.PATCH</code>).
 Update the version number in <a href="file:///home/freitas/workspace/Mercury_Code_Development/Mercury/pyproject.toml"><code>pyproject.toml</code></a>:</p>
 <div class="highlight"><pre><span></span><code><span class="k">[tool.poetry]</span>
@@ -169,7 +180,7 @@ Update the version number in <a href="file:///home/freitas/workspace/Mercury_Cod
 git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;Bump version to 2.0.2&quot;</span>
 git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>main
 </code></pre></div>
-<h3 id="step-2-build-release-packages-locally">Step 2: Build Release Packages Locally</h3>
+<h3 id="step-3-build-release-packages-locally">Step 3: Build Release Packages Locally</h3>
 <p>Verify that the packaging build succeeds and produces clean distribution artifacts:</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Ensure build tools are installed</span>
 pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>build
@@ -187,12 +198,12 @@ python<span class="w"> </span>-m<span class="w"> </span>build
 <div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>dist/mercury_kinetics-2.0.2-py3-none-any.whl
 python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import mercury; print(mercury.__version__)&quot;</span>
 </code></pre></div>
-<h3 id="step-3-tag-the-release-in-git">Step 3: Tag the Release in Git</h3>
+<h3 id="step-4-tag-the-release-in-git">Step 4: Tag the Release in Git</h3>
 <p>Tag the commit corresponding to the release:</p>
 <div class="highlight"><pre><span></span><code>git<span class="w"> </span>tag<span class="w"> </span>-a<span class="w"> </span>v2.0.2<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;Release v2.0.2: summary of major changes&quot;</span>
 git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>v2.0.2
 </code></pre></div>
-<h3 id="step-4-create-a-github-release">Step 4: Create a GitHub Release</h3>
+<h3 id="step-5-create-a-github-release">Step 5: Create a GitHub Release</h3>
 <ol>
 <li>Go to <a href="https://github.com/pinneylab/Mercury/releases">github.com/pinneylab/Mercury/releases</a>.</li>
 <li>Click <strong>Draft a new release</strong>.</li>
@@ -276,8 +287,12 @@ mkdocs<span class="w"> </span>serve
 </code></pre></div>
 <p>This compiles high-resolution, 2× scale PNGs (<code>analysis_pipeline.png</code>, <code>processing_pipeline.png</code>) using <code>@mermaid-js/mermaid-cli</code>.</p>
 <h3 id="building-and-validating-the-site">Building and Validating the Site</h3>
-<p>Before publishing, verify that all internal links, docstrings, and images compile without error:</p>
-<div class="highlight"><pre><span></span><code>mkdocs<span class="w"> </span>build
+<p>Before publishing, verify that all tests pass and that all internal links, docstrings, and images compile without error:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Verify code and docstring integrity</span>
+python<span class="w"> </span>-m<span class="w"> </span>unittest<span class="w"> </span>discover<span class="w"> </span>-s<span class="w"> </span><span class="nb">test</span><span class="w"> </span>-p<span class="w"> </span><span class="s2">&quot;test*.py&quot;</span><span class="w"> </span>-v
+
+<span class="c1"># 2. Test static site compilation</span>
+mkdocs<span class="w"> </span>build
 </code></pre></div>
 <h3 id="publishing-to-github-pages-pinneylabgithubiomercury">Publishing to GitHub Pages (<code>pinneylab.github.io/Mercury</code>)</h3>
 <p>To push your latest documentation live to GitHub Pages, run:</p>
