@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://pinneylab.github.io/mercury/api/db_api/" />
       <link rel="shortcut icon" href="../../img/favicon.ico" />
     <title>mercury.db_api - Mercury Documentation</title>
     <link rel="stylesheet" href="../../css/theme.css" />
@@ -16,7 +16,7 @@
         // Current page data
         var mkdocs_page_name = "mercury.db_api";
         var mkdocs_page_input_path = "api/db_api.md";
-        var mkdocs_page_url = null;
+        var mkdocs_page_url = "/mercury/api/db_api/";
       </script>
     
     <!--[if lt IE 9]>
@@ -49,7 +49,14 @@
                 <li class="toctree-l1"><a class="reference internal" href="../../quickstart/">Quickstart</a>
                 </li>
               </ul>
-              <p class="caption"><span class="caption-text">User Guides</span></p>
+              <p class="caption"><span class="caption-text">Notebook Tutorials</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../guides/notebook_analysis/">Michaelis–Menten Analysis & QC</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../guides/notebook_processing/">Image Processing & Quantification</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Module Guides</span></p>
               <ul>
                   <li class="toctree-l1"><a class="reference internal" href="../../guides/processing/">Image Processing & Chips</a>
                   </li>
@@ -105,10 +112,28 @@
     <li class="toctree-l2"><a class="reference internal" href="#mercury.db_api.data">data</a>
         <ul>
     <li class="toctree-l3"><a class="reference internal" href="#mercury.db_api.data.Data2D">Data2D</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#mercury.db_api.data.Data2D.export_to_csv">export_to_csv</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#mercury.db_api.data.Data2D.to_dataframe">to_dataframe</a>
+    </li>
+        </ul>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#mercury.db_api.data.Data3D">Data3D</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#mercury.db_api.data.Data3D.export_to_csv">export_to_csv</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#mercury.db_api.data.Data3D.to_dataframe">to_dataframe</a>
+    </li>
+        </ul>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#mercury.db_api.data.Data4D">Data4D</a>
+        <ul>
+    <li class="toctree-l4"><a class="reference internal" href="#mercury.db_api.data.Data4D.export_to_csv">export_to_csv</a>
+    </li>
+    <li class="toctree-l4"><a class="reference internal" href="#mercury.db_api.data.Data4D.to_dataframe">to_dataframe</a>
+    </li>
+        </ul>
     </li>
     <li class="toctree-l3"><a class="reference internal" href="#mercury.db_api.data.IndepVars">IndepVars</a>
     </li>
@@ -178,6 +203,7 @@
           <li class="breadcrumb-item">API Reference</li>
       <li class="breadcrumb-item active">mercury.db_api</li>
     <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/pinneylab/Mercury/edit/master/docs/api/db_api.md" class="icon icon-github"> Edit on GitHub</a>
     </li>
   </ul>
   <hr/>
@@ -2019,32 +2045,42 @@ followed by explicit <code>load_run()</code> calls.</p>
 
               <details class="quote">
                 <summary>Source code in <code>src/mercury/db_api/data.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">126</span>
 <span class="normal">127</span>
 <span class="normal">128</span>
 <span class="normal">129</span>
 <span class="normal">130</span>
-<span class="normal">131</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Data2D</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Two-dimensional dataset structure containing single-timepoint or fitted summary values per chamber.</span>
 
@@ -2070,6 +2106,16 @@ followed by explicit <code>load_run()</code> calls.</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">indep_vars</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">()</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dep_var</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;dep_var must be 2D, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dep_var</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert Data2D object into a pandas DataFrame.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">data_to_dataframe</span>
+        <span class="k">return</span> <span class="n">data_to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="o">=</span><span class="n">aggregate_by_sample</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">export_to_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Export Data2D object to a CSV file.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">export_data_to_csv</span>
+        <span class="k">return</span> <span class="n">export_data_to_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="n">file_path</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="o">=</span><span class="n">aggregate_by_sample</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -2084,6 +2130,62 @@ followed by explicit <code>load_run()</code> calls.</p>
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="mercury.db_api.data.Data2D.export_to_csv" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">export_to_csv</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Export Data2D object to a CSV file.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>src/mercury/db_api/data.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export_to_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Export Data2D object to a CSV file.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">export_data_to_csv</span>
+    <span class="k">return</span> <span class="n">export_data_to_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="n">file_path</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="o">=</span><span class="n">aggregate_by_sample</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="mercury.db_api.data.Data2D.to_dataframe" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">to_dataframe</span><span class="p">(</span><span class="n">aggregate_by_sample</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Convert Data2D object into a pandas DataFrame.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>src/mercury/db_api/data.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert Data2D object into a pandas DataFrame.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">data_to_dataframe</span>
+    <span class="k">return</span> <span class="n">data_to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="o">=</span><span class="n">aggregate_by_sample</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 
@@ -2177,17 +2279,7 @@ followed by explicit <code>load_run()</code> calls.</p>
 
               <details class="quote">
                 <summary>Source code in <code>src/mercury/db_api/data.py</code></summary>
-                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 79</span>
-<span class="normal"> 80</span>
-<span class="normal"> 81</span>
-<span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
-<span class="normal"> 89</span>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 89</span>
 <span class="normal"> 90</span>
 <span class="normal"> 91</span>
 <span class="normal"> 92</span>
@@ -2202,7 +2294,27 @@ followed by explicit <code>load_run()</code> calls.</p>
 <span class="normal">101</span>
 <span class="normal">102</span>
 <span class="normal">103</span>
-<span class="normal">104</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Data3D</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Three-dimensional dataset structure containing summary assay observations.</span>
 
@@ -2228,6 +2340,16 @@ followed by explicit <code>load_run()</code> calls.</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">indep_vars</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">()</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dep_var</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;dep_var must be 3D, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dep_var</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert Data3D object into a pandas DataFrame.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">data_to_dataframe</span>
+        <span class="k">return</span> <span class="n">data_to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="o">=</span><span class="n">aggregate_by_sample</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">export_to_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Export Data3D object to a CSV file.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">export_data_to_csv</span>
+        <span class="k">return</span> <span class="n">export_data_to_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="n">file_path</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="o">=</span><span class="n">aggregate_by_sample</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -2242,6 +2364,62 @@ followed by explicit <code>load_run()</code> calls.</p>
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="mercury.db_api.data.Data3D.export_to_csv" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">export_to_csv</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Export Data3D object to a CSV file.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>src/mercury/db_api/data.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export_to_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Export Data3D object to a CSV file.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">export_data_to_csv</span>
+    <span class="k">return</span> <span class="n">export_data_to_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="n">file_path</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="o">=</span><span class="n">aggregate_by_sample</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="mercury.db_api.data.Data3D.to_dataframe" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">to_dataframe</span><span class="p">(</span><span class="n">aggregate_by_sample</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Convert Data3D object into a pandas DataFrame.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>src/mercury/db_api/data.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert Data3D object into a pandas DataFrame.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">data_to_dataframe</span>
+    <span class="k">return</span> <span class="n">data_to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="o">=</span><span class="n">aggregate_by_sample</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 
@@ -2361,7 +2539,17 @@ followed by explicit <code>load_run()</code> calls.</p>
 <span class="normal">74</span>
 <span class="normal">75</span>
 <span class="normal">76</span>
-<span class="normal">77</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">Data4D</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Four-dimensional dataset structure containing kinetic time-series observations.</span>
 
@@ -2388,6 +2576,16 @@ followed by explicit <code>load_run()</code> calls.</p>
         <span class="bp">self</span><span class="o">.</span><span class="n">indep_vars</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">()</span>  <span class="c1"># validate copied indep vars</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dep_var</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">4</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;dep_var must be 4D, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dep_var</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Convert Data4D object into a pandas DataFrame.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">data_to_dataframe</span>
+        <span class="k">return</span> <span class="n">data_to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="o">=</span><span class="n">aggregate_by_sample</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">export_to_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Export Data4D object to a CSV file.&quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">export_data_to_csv</span>
+        <span class="k">return</span> <span class="n">export_data_to_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="n">file_path</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="o">=</span><span class="n">aggregate_by_sample</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
               </details>
 
@@ -2402,6 +2600,62 @@ followed by explicit <code>load_run()</code> calls.</p>
 
 
 
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="mercury.db_api.data.Data4D.export_to_csv" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">export_to_csv</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Export Data4D object to a CSV file.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>src/mercury/db_api/data.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export_to_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Export Data4D object to a CSV file.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">export_data_to_csv</span>
+    <span class="k">return</span> <span class="n">export_data_to_csv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file_path</span><span class="o">=</span><span class="n">file_path</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="o">=</span><span class="n">aggregate_by_sample</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="mercury.db_api.data.Data4D.to_dataframe" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">to_dataframe</span><span class="p">(</span><span class="n">aggregate_by_sample</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+</h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Convert Data4D object into a pandas DataFrame.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>src/mercury/db_api/data.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert Data4D object into a pandas DataFrame.&quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.export</span><span class="w"> </span><span class="kn">import</span> <span class="n">data_to_dataframe</span>
+    <span class="k">return</span> <span class="n">data_to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">aggregate_by_sample</span><span class="o">=</span><span class="n">aggregate_by_sample</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
 
 
 
@@ -3945,6 +4199,10 @@ Returns:
 
   <div class="rst-versions" role="note" aria-label="Versions">
   <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/pinneylab/Mercury" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
     
     
       <span><a href="../analysis/" style="color: #fcfcfc">&laquo; Previous</a></span>

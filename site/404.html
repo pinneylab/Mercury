@@ -4,16 +4,16 @@
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <link rel="shortcut icon" href="/img/favicon.ico" />
+      <link rel="shortcut icon" href="/mercury/img/favicon.ico" />
     <title>Mercury Documentation</title>
-    <link rel="stylesheet" href="/css/theme.css" />
-    <link rel="stylesheet" href="/css/theme_extra.css" />
+    <link rel="stylesheet" href="/mercury/css/theme.css" />
+    <link rel="stylesheet" href="/mercury/css/theme_extra.css" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
-        <link href="/assets/_mkdocstrings.css" rel="stylesheet" />
-        <link href="/css/custom.css" rel="stylesheet" />
+        <link href="/mercury/assets/_mkdocstrings.css" rel="stylesheet" />
+        <link href="/mercury/css/custom.css" rel="stylesheet" />
     
     <!--[if lt IE 9]>
-      <script src="/js/html5shiv.min.js"></script>
+      <script src="/mercury/js/html5shiv.min.js"></script>
     <![endif]-->
       <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
       <script>hljs.highlightAll();</script> 
@@ -25,9 +25,9 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
     <div class="wy-side-scroll">
       <div class="wy-side-nav-search">
-          <a href="/." class="icon icon-home"> Mercury Documentation
+          <a href="/mercury/." class="icon icon-home"> Mercury Documentation
         </a><div role="search">
-  <form id ="rtd-search-form" class="wy-form" action="//search.html" method="get">
+  <form id ="rtd-search-form" class="wy-form" action="/mercury//search.html" method="get">
       <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
   </form>
 </div>
@@ -35,39 +35,46 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="/.">Overview</a>
+                <li class="toctree-l1"><a class="reference internal" href="/mercury/.">Overview</a>
                 </li>
               </ul>
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="/quickstart/">Quickstart</a>
+                <li class="toctree-l1"><a class="reference internal" href="/mercury/quickstart/">Quickstart</a>
                 </li>
               </ul>
-              <p class="caption"><span class="caption-text">User Guides</span></p>
+              <p class="caption"><span class="caption-text">Notebook Tutorials</span></p>
               <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="/guides/processing/">Image Processing & Chips</a>
+                  <li class="toctree-l1"><a class="reference internal" href="/mercury/guides/notebook_analysis/">Michaelis–Menten Analysis & QC</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="/guides/stitching/">Image Stitching</a>
+                  <li class="toctree-l1"><a class="reference internal" href="/mercury/guides/notebook_processing/">Image Processing & Quantification</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="/guides/db_api/">Database API & Data I/O</a>
+              </ul>
+              <p class="caption"><span class="caption-text">Module Guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="/mercury/guides/processing/">Image Processing & Chips</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="/guides/analysis/">Analysis & Fitting</a>
+                  <li class="toctree-l1"><a class="reference internal" href="/mercury/guides/stitching/">Image Stitching</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="/mercury/guides/db_api/">Database API & Data I/O</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="/mercury/guides/analysis/">Analysis & Fitting</a>
                   </li>
               </ul>
               <p class="caption"><span class="caption-text">API Reference</span></p>
               <ul>
-                  <li class="toctree-l1"><a class="reference internal" href="/api/analysis/">mercury.analysis</a>
+                  <li class="toctree-l1"><a class="reference internal" href="/mercury/api/analysis/">mercury.analysis</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="/api/db_api/">mercury.db_api</a>
+                  <li class="toctree-l1"><a class="reference internal" href="/mercury/api/db_api/">mercury.db_api</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="/api/processing/">mercury.processing</a>
+                  <li class="toctree-l1"><a class="reference internal" href="/mercury/api/processing/">mercury.processing</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="/api/stitching/">mercury.stitching</a>
+                  <li class="toctree-l1"><a class="reference internal" href="/mercury/api/stitching/">mercury.stitching</a>
                   </li>
-                  <li class="toctree-l1"><a class="reference internal" href="/api/scripts/">mercury.scripts</a>
+                  <li class="toctree-l1"><a class="reference internal" href="/mercury/api/scripts/">mercury.scripts</a>
                   </li>
               </ul>
               <ul>
-                <li class="toctree-l1"><a class="reference internal" href="/cli/">CLI Reference</a>
+                <li class="toctree-l1"><a class="reference internal" href="/mercury/cli/">CLI Reference</a>
                 </li>
               </ul>
       </div>
@@ -77,13 +84,13 @@
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
       <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="/.">Mercury Documentation</a>
+          <a href="/mercury/.">Mercury Documentation</a>
         
       </nav>
       <div class="wy-nav-content">
         <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
   <ul class="wy-breadcrumbs">
-    <li><a href="/." class="icon icon-home" aria-label="Docs"></a></li>
+    <li><a href="/mercury/." class="icon icon-home" aria-label="Docs"></a></li>
     <li class="wy-breadcrumbs-aside">
     </li>
   </ul>
@@ -120,15 +127,19 @@
   <div class="rst-versions" role="note" aria-label="Versions">
   <span class="rst-current-version" data-toggle="rst-current-version">
     
+        <span>
+          <a href="https://github.com/pinneylab/Mercury" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
     
     
   </span>
 </div>
-    <script src="/js/jquery-3.6.0.min.js"></script>
-    <script>var base_url = "/";</script>
-    <script src="/js/theme_extra.js"></script>
-    <script src="/js/theme.js"></script>
-      <script src="/search/main.js"></script>
+    <script src="/mercury/js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "/mercury/";</script>
+    <script src="/mercury/js/theme_extra.js"></script>
+    <script src="/mercury/js/theme.js"></script>
+      <script src="/mercury/search/main.js"></script>
     <script>
         jQuery(function () {
             SphinxRtdTheme.Navigation.enable(true);

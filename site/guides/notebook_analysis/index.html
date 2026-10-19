@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://pinneylab.github.io/mercury/guides/notebook_analysis/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Michaelis–Menten Analysis & QC - Mercury Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+        <link href="../../css/custom.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Michaelis\u2013Menten Analysis \u0026 QC";
+        var mkdocs_page_input_path = "guides/notebook_analysis.md";
+        var mkdocs_page_url = "/mercury/guides/notebook_analysis/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Mercury Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Overview</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../quickstart/">Quickstart</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Notebook Tutorials</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Michaelis–Menten Analysis & QC</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#overview-of-the-analysis-pipeline">Overview of the Analysis Pipeline</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#1-setup-database-connection">1. Setup &amp; Database Connection</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2-enzyme-quantification">2. Enzyme Quantification</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3-product-standard-curve-calibration">3. Product Standard Curve Calibration</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#4-initial-velocity-v0-fitting">4. Initial Velocity (V0) Fitting</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#5-non-enzymatic-background-rate-subtraction">5. Non-Enzymatic Background Rate Subtraction</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#6-multi-stage-quality-control-filtering">6. Multi-Stage Quality-Control Filtering</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#7-michaelismenten-model-fitting">7. Michaelis–Menten Model Fitting</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#8-normalizing-by-e-for-kcat-and-v0-e">8. Normalizing by [E] for kcat and V0 / [E]</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#9-replicate-outlier-filtering-z-score-filtering">9. Replicate Outlier Filtering (Z-Score Filtering)</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#10-exporting-results-diagnostics">10. Exporting Results &amp; Diagnostics</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#output-files-summary">Output Files Summary</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../notebook_processing/">Image Processing & Quantification</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Module Guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../processing/">Image Processing & Chips</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../stitching/">Image Stitching</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../db_api/">Database API & Data I/O</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../analysis/">Analysis & Fitting</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/analysis/">mercury.analysis</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/db_api/">mercury.db_api</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/processing/">mercury.processing</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/stitching/">mercury.stitching</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/scripts/">mercury.scripts</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../cli/">CLI Reference</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Mercury Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Notebook Tutorials</li>
+      <li class="breadcrumb-item active">Michaelis–Menten Analysis & QC</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/pinneylab/Mercury/edit/master/docs/guides/notebook_analysis.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="michaelis-menten-analysis-qc-walkthrough">Michaelis-Menten Analysis &amp; QC Walkthrough</h1>
+<p>This guide provides a comprehensive, step-by-step walkthrough of the standard enzyme kinetics analysis pipeline in Mercury, based on the template notebook <a href="https://github.com/pinneylab/mercury_notebooks/blob/main/htbam_notebooks/analysis_mm.ipynb"><code>htbam_notebooks/analysis_mm.ipynb</code></a>.</p>
+<p>It starts from quantified fluorescence tables and walks all the way through enzyme calibration, product calibration, initial rate fitting, background rate subtraction, quality-control filtering, Michaelis–Menten model fitting, replicate aggregation, and publication-ready diagnostic exports.</p>
+<hr />
+<h2 id="overview-of-the-analysis-pipeline">Overview of the Analysis Pipeline</h2>
+<p><img alt="Mercury Analysis Pipeline" class="half-size" src="../../images/analysis_pipeline.png" width="50%" /></p>
+<hr />
+<h2 id="1-setup-database-connection">1. Setup &amp; Database Connection</h2>
+<p>Before starting your analysis, copy the template notebook so your original template stays clean:</p>
+<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>htbam_notebooks/analysis_mm.ipynb<span class="w"> </span>my_experiment_analysis.ipynb
+</code></pre></div>
+<p>In your notebook or script, load the required modules and connect to your quantified data tables via <code>LocalMercuryDBAPI</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mercury.db_api.mercury_db_api</span><span class="w"> </span><span class="kn">import</span> <span class="n">LocalMercuryDBAPI</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.experiment</span><span class="w"> </span><span class="kn">import</span> <span class="n">MercuryExperiment</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mercury.db_api.units</span><span class="w"> </span><span class="kn">import</span> <span class="n">units</span>
+
+<span class="c1"># Calibration constant for eGFP fluorescence (RFU to nM)</span>
+<span class="n">EGFP_SLOPE</span> <span class="o">=</span> <span class="p">(</span><span class="mf">91900.03</span> <span class="o">/</span> <span class="mi">9</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">units</span><span class="o">.</span><span class="n">RFU</span> <span class="o">/</span> <span class="n">units</span><span class="o">.</span><span class="n">nM</span><span class="p">)</span>
+
+<span class="c1"># Path to the directory containing your quantified CSV/bz2 tables</span>
+<span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s1">&#39;./your_data_folder/&#39;</span><span class="p">)</span>
+
+<span class="n">db_conn</span> <span class="o">=</span> <span class="n">LocalMercuryDBAPI</span><span class="p">(</span>
+    <span class="c1"># Product standard curve measurements</span>
+    <span class="n">standard_curve_data_path</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="s1">&#39;standard_data.csv.bz2&#39;</span><span class="p">),</span>
+    <span class="n">standard_name</span><span class="o">=</span><span class="s2">&quot;NADPH&quot;</span><span class="p">,</span> 
+    <span class="n">standard_substrate</span><span class="o">=</span><span class="s2">&quot;NADPH&quot;</span><span class="p">,</span> 
+    <span class="n">standard_units</span><span class="o">=</span><span class="n">units</span><span class="o">.</span><span class="n">uM</span><span class="p">,</span>
+    <span class="n">standard_concentration_col</span><span class="o">=</span><span class="s2">&quot;concentration&quot;</span><span class="p">,</span>  <span class="c1"># Must match the column in standard CSV</span>
+
+    <span class="c1"># Kinetic reaction progress measurements</span>
+    <span class="n">kinetic_data_path</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="s1">&#39;kinetics_data.csv.bz2&#39;</span><span class="p">),</span>
+    <span class="n">kinetic_name</span><span class="o">=</span><span class="s2">&quot;ADP&quot;</span><span class="p">,</span> 
+    <span class="n">kinetic_substrate</span><span class="o">=</span><span class="s2">&quot;ADP&quot;</span><span class="p">,</span> 
+    <span class="n">kinetic_units</span><span class="o">=</span><span class="n">units</span><span class="o">.</span><span class="n">uM</span><span class="p">,</span>
+    <span class="n">kinetic_concentration_col</span><span class="o">=</span><span class="s2">&quot;adp_conc&quot;</span><span class="p">,</span>        <span class="c1"># Must match substrate column in kinetics CSV</span>
+
+    <span class="c1"># Timing and protein expression measurements</span>
+    <span class="n">time_units</span><span class="o">=</span><span class="n">units</span><span class="o">.</span><span class="n">s</span><span class="p">,</span>
+    <span class="n">button_quant_data_path</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="s1">&#39;button_quant.csv&#39;</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">mercury_experiment</span> <span class="o">=</span> <span class="n">MercuryExperiment</span><span class="p">(</span><span class="n">db_conn</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Loaded runs:&quot;</span><span class="p">,</span> <span class="n">db_conn</span><span class="o">.</span><span class="n">get_run_names</span><span class="p">())</span>
+<span class="c1"># Expected: [&#39;NADPH&#39;, &#39;ADP&#39;, &#39;button_quant&#39;]</span>
+</code></pre></div>
+<hr />
+<h2 id="2-enzyme-quantification">2. Enzyme Quantification</h2>
+<p>Convert surface-bound fluorescence intensity under the button ROI into molar enzyme concentration [E]:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.transform</span><span class="w"> </span><span class="kn">import</span> <span class="n">transform_data</span>
+
+<span class="n">button_concentrations</span> <span class="o">=</span> <span class="n">transform_data</span><span class="p">(</span>
+    <span class="n">data_objs</span><span class="o">=</span><span class="p">[</span><span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s1">&#39;button_quant&#39;</span><span class="p">)],</span>
+    <span class="n">expr</span><span class="o">=</span><span class="s1">&#39;(a_luminance / slope)&#39;</span><span class="p">,</span>
+    <span class="n">expression_vars</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;slope&#39;</span><span class="p">:</span> <span class="n">EGFP_SLOPE</span><span class="p">},</span>
+    <span class="n">output_name</span><span class="o">=</span><span class="s1">&#39;concentration&#39;</span>
+<span class="p">)</span>
+
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;enzyme_concentrations&#39;</span><span class="p">,</span> <span class="n">button_concentrations</span><span class="p">)</span>
+
+<span class="c1"># Interactively inspect enzyme expression across the chip:</span>
+<span class="n">plot</span><span class="o">.</span><span class="n">plot_enzyme_concentration_chip</span><span class="p">(</span><span class="n">mercury_experiment</span><span class="p">,</span> <span class="n">analysis_name</span><span class="o">=</span><span class="s1">&#39;enzyme_concentrations&#39;</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="3-product-standard-curve-calibration">3. Product Standard Curve Calibration</h2>
+<p>Fit calibration curves for each chamber to convert fluorescence units (RFU) into micromolar product concentration:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.fit</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_luminance_vs_concentration</span>
+
+<span class="n">standard_experiment_data</span> <span class="o">=</span> <span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s1">&#39;NADPH&#39;</span><span class="p">)</span>
+<span class="n">standard_fits</span> <span class="o">=</span> <span class="n">fit_luminance_vs_concentration</span><span class="p">(</span><span class="n">standard_experiment_data</span><span class="p">)</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;NADPH_standard&#39;</span><span class="p">,</span> <span class="n">standard_fits</span><span class="p">)</span>
+
+<span class="c1"># Inspect standard curve fits across chambers</span>
+<span class="n">plot</span><span class="o">.</span><span class="n">plot_standard_curve_chip</span><span class="p">(</span><span class="n">mercury_experiment</span><span class="p">,</span> <span class="s1">&#39;NADPH_standard&#39;</span><span class="p">,</span> <span class="s1">&#39;NADPH&#39;</span><span class="p">)</span>
+</code></pre></div>
+<blockquote>
+<p><strong>Tip - Masking bad standard points:</strong>
+If a particular standard concentration had a pipetting or imaging glitch, you can mask it using <code>mercury.analysis.filter.make_custom_mask</code> before calling <code>fit_luminance_vs_concentration</code>.</p>
+</blockquote>
+<hr />
+<h2 id="4-initial-velocity-v0-fitting">4. Initial Velocity (V<sub>0</sub>) Fitting</h2>
+<p>Using the fitted calibration lines, convert time-course kinetics fluorescence into product concentrations, then fit the linear initial velocity slope V<sub>0</sub>:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.fit</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_concentration_vs_time</span>
+
+<span class="c1"># 1. Convert RFU to product concentration per chamber: [P] = (RFU - intercept) / slope</span>
+<span class="n">product_concentrations</span> <span class="o">=</span> <span class="n">transform_data</span><span class="p">(</span>
+    <span class="n">data_objs</span><span class="o">=</span><span class="p">[</span><span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s1">&#39;ADP&#39;</span><span class="p">),</span> <span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s1">&#39;NADPH_standard&#39;</span><span class="p">)],</span>
+    <span class="n">expr</span><span class="o">=</span><span class="s1">&#39;(a.luminance - b.intercept) / b.slope&#39;</span><span class="p">,</span>
+    <span class="n">output_name</span><span class="o">=</span><span class="s1">&#39;concentration&#39;</span>
+<span class="p">)</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;kinetics_ADP_conc&#39;</span><span class="p">,</span> <span class="n">product_concentrations</span><span class="p">)</span>
+
+<span class="c1"># 2. Fit linear initial rates</span>
+<span class="n">kinetics_concentrations</span> <span class="o">=</span> <span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s1">&#39;kinetics_ADP_conc&#39;</span><span class="p">)</span>
+<span class="n">kinetics_fits</span><span class="p">,</span> <span class="n">fit_points_mask</span> <span class="o">=</span> <span class="n">fit_concentration_vs_time</span><span class="p">(</span>
+    <span class="n">kinetics_concentrations</span><span class="p">,</span> 
+    <span class="n">start_timepoint</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>            <span class="c1"># Skip initial mixing/settling artifacts</span>
+    <span class="n">end_timepoint</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>             <span class="c1"># Upper bound of initial linear region</span>
+    <span class="n">max_reaction_percent</span><span class="o">=</span><span class="mi">10</span>       <span class="c1"># Keep points with &lt;= 10% substrate consumed</span>
+<span class="p">)</span>
+
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;kinetics_ADP_conc_fits&#39;</span><span class="p">,</span> <span class="n">kinetics_fits</span><span class="p">)</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;fit_points_mask&#39;</span><span class="p">,</span> <span class="n">fit_points_mask</span><span class="p">)</span>
+
+<span class="c1"># Inspect initial rates on the chip</span>
+<span class="n">plot</span><span class="o">.</span><span class="n">plot_initial_rates_chip</span><span class="p">(</span>
+    <span class="n">mercury_experiment</span><span class="p">,</span> 
+    <span class="n">analysis_name</span><span class="o">=</span><span class="s1">&#39;kinetics_ADP_conc_fits&#39;</span><span class="p">,</span> 
+    <span class="n">experiment_name</span><span class="o">=</span><span class="s1">&#39;kinetics_ADP_conc&#39;</span><span class="p">,</span>
+    <span class="n">fit_points_mask</span><span class="o">=</span><span class="s1">&#39;fit_points_mask&#39;</span>
+<span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="5-non-enzymatic-background-rate-subtraction">5. Non-Enzymatic Background Rate Subtraction</h2>
+<p>In many assays, substrate degrades spontaneously or undergoes non-enzymatic reaction. We estimate this background rate from negative-control chambers (e.g. <code>meGFP</code> or buffer wells) and subtract it from all active chambers:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.filter</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_by_sample_id</span>
+
+<span class="c1"># 1. Isolate control/buffer chambers</span>
+<span class="n">buffer_mask</span> <span class="o">=</span> <span class="n">filter_by_sample_id</span><span class="p">(</span><span class="n">kinetics_fits</span><span class="p">,</span> <span class="n">sample_ids</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;meGFP&#39;</span><span class="p">])</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;buffer_mask&#39;</span><span class="p">,</span> <span class="n">buffer_mask</span><span class="p">)</span>
+
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">apply_mask</span><span class="p">(</span>
+    <span class="n">run_name</span><span class="o">=</span><span class="s1">&#39;kinetics_ADP_conc_fits&#39;</span><span class="p">,</span> 
+    <span class="n">dep_variables</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;slope&#39;</span><span class="p">,</span> <span class="s1">&#39;intercept&#39;</span><span class="p">,</span> <span class="s1">&#39;r_squared&#39;</span><span class="p">],</span> 
+    <span class="n">save_as</span><span class="o">=</span><span class="s1">&#39;buffer_wells&#39;</span><span class="p">,</span>
+    <span class="n">mask_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;buffer_mask&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+
+<span class="c1"># 2. Compute the 25th percentile of control slopes (robust against outliers)</span>
+<span class="n">buffer_wells</span> <span class="o">=</span> <span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s1">&#39;buffer_wells&#39;</span><span class="p">)</span>
+<span class="n">buffer_wells_lower_quartile</span> <span class="o">=</span> <span class="n">transform_data</span><span class="p">(</span>
+    <span class="n">data_objs</span><span class="o">=</span><span class="p">[</span><span class="n">buffer_wells</span><span class="p">],</span>
+    <span class="n">expr</span><span class="o">=</span><span class="s1">&#39;np.nanpercentile(a.device.slope, 25, axis=1)&#39;</span><span class="p">,</span>
+    <span class="n">output_name</span><span class="o">=</span><span class="s1">&#39;slope_lower_quartile&#39;</span>
+<span class="p">)</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;buffer_wells_lower_quartile&#39;</span><span class="p">,</span> <span class="n">buffer_wells_lower_quartile</span><span class="p">)</span>
+
+<span class="c1"># 3. Subtract background rate from every chamber</span>
+<span class="n">corrected_initial_rates</span> <span class="o">=</span> <span class="n">transform_data</span><span class="p">(</span>
+    <span class="n">data_objs</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s1">&#39;kinetics_ADP_conc_fits&#39;</span><span class="p">),</span> 
+        <span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s1">&#39;buffer_wells_lower_quartile&#39;</span><span class="p">)</span>
+    <span class="p">],</span>
+    <span class="n">expr</span><span class="o">=</span><span class="s1">&#39;(a.chamber.slope - b.chamber.slope_lower_quartile)&#39;</span><span class="p">,</span>
+    <span class="n">output_name</span><span class="o">=</span><span class="s1">&#39;slope&#39;</span><span class="p">,</span>
+    <span class="n">keep_existing</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;kinetics_ADP_conc_fits_bgsub&#39;</span><span class="p">,</span> <span class="n">corrected_initial_rates</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="6-multi-stage-quality-control-filtering">6. Multi-Stage Quality-Control Filtering</h2>
+<p>Ensure low-quality or aberrant chambers do not corrupt kinetic fits:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.filter</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">filter_initial_rates_r2_cutoff</span><span class="p">,</span>
+    <span class="n">filter_initial_rates_positive_cutoff</span><span class="p">,</span>
+    <span class="n">filter_standard_curve_r2_cutoff</span><span class="p">,</span>
+    <span class="n">filter_expression_cutoff</span><span class="p">,</span>
+    <span class="n">filter_number_concentrations</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">kinetics_fits_bgsub</span> <span class="o">=</span> <span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s1">&#39;kinetics_ADP_conc_fits_bgsub&#39;</span><span class="p">)</span>
+
+<span class="c1"># Build individual filter masks:</span>
+<span class="n">initial_rates_r2_mask</span> <span class="o">=</span> <span class="n">filter_initial_rates_r2_cutoff</span><span class="p">(</span><span class="n">kinetics_fits_bgsub</span><span class="p">,</span> <span class="n">r2_cutoff</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+<span class="n">initial_rates_positive_mask</span> <span class="o">=</span> <span class="n">filter_initial_rates_positive_cutoff</span><span class="p">(</span><span class="n">kinetics_fits_bgsub</span><span class="p">)</span>
+<span class="n">standard_curve_r2_mask</span> <span class="o">=</span> <span class="n">filter_standard_curve_r2_cutoff</span><span class="p">(</span><span class="n">standard_fits</span><span class="p">,</span> <span class="n">kinetics_fits_bgsub</span><span class="p">,</span> <span class="n">r2_cutoff</span><span class="o">=</span><span class="mf">0.9</span><span class="p">)</span>
+<span class="n">expression_mask</span> <span class="o">=</span> <span class="n">filter_expression_cutoff</span><span class="p">(</span><span class="n">button_concentrations</span><span class="p">,</span> <span class="n">kinetics_fits_bgsub</span><span class="p">,</span> <span class="n">expression_cutoff</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;initial_rates_r2_mask&#39;</span><span class="p">,</span> <span class="n">initial_rates_r2_mask</span><span class="p">)</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;initial_rates_positive_mask&#39;</span><span class="p">,</span> <span class="n">initial_rates_positive_mask</span><span class="p">)</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;standard_curve_r2_mask&#39;</span><span class="p">,</span> <span class="n">standard_curve_r2_mask</span><span class="p">)</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;expression_mask&#39;</span><span class="p">,</span> <span class="n">expression_mask</span><span class="p">)</span>
+
+<span class="c1"># Preview any mask before applying:</span>
+<span class="n">plot</span><span class="o">.</span><span class="n">plot_mask_chip</span><span class="p">(</span><span class="n">mercury_experiment</span><span class="p">,</span> <span class="n">mask_name</span><span class="o">=</span><span class="s1">&#39;initial_rates_r2_mask&#39;</span><span class="p">)</span>
+
+<span class="c1"># Apply rate-level filters</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">apply_mask</span><span class="p">(</span>
+    <span class="n">run_name</span><span class="o">=</span><span class="s1">&#39;kinetics_ADP_conc_fits_bgsub&#39;</span><span class="p">,</span> 
+    <span class="n">dep_variables</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;slope&#39;</span><span class="p">,</span> <span class="s1">&#39;intercept&#39;</span><span class="p">],</span> 
+    <span class="n">save_as</span><span class="o">=</span><span class="s1">&#39;kinetics_ADP_conc_fits_masked&#39;</span><span class="p">,</span>
+    <span class="n">mask_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;initial_rates_r2_mask&#39;</span><span class="p">,</span> <span class="s1">&#39;initial_rates_positive_mask&#39;</span><span class="p">,</span> <span class="s1">&#39;standard_curve_r2_mask&#39;</span><span class="p">,</span> <span class="s1">&#39;expression_mask&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+
+<span class="c1"># Enforce minimum concentration requirement (e.g. at least 5 valid concentrations):</span>
+<span class="n">kinetics_fits_masked</span> <span class="o">=</span> <span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s1">&#39;kinetics_ADP_conc_fits_masked&#39;</span><span class="p">)</span>
+<span class="n">number_initial_rates_mask</span> <span class="o">=</span> <span class="n">filter_number_concentrations</span><span class="p">(</span><span class="n">kinetics_fits_masked</span><span class="p">,</span> <span class="n">min_concentrations</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">var_to_check</span><span class="o">=</span><span class="s1">&#39;slope&#39;</span><span class="p">)</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;number_initial_rates_mask&#39;</span><span class="p">,</span> <span class="n">number_initial_rates_mask</span><span class="p">)</span>
+
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">apply_mask</span><span class="p">(</span>
+    <span class="n">run_name</span><span class="o">=</span><span class="s1">&#39;kinetics_ADP_conc_fits_masked&#39;</span><span class="p">,</span> 
+    <span class="n">dep_variables</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;slope&#39;</span><span class="p">,</span> <span class="s1">&#39;intercept&#39;</span><span class="p">,</span> <span class="s1">&#39;r_squared&#39;</span><span class="p">],</span> 
+    <span class="n">save_as</span><span class="o">=</span><span class="s1">&#39;kinetics_ADP_conc_fits_masked&#39;</span><span class="p">,</span>
+    <span class="n">mask_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;number_initial_rates_mask&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="7-michaelismenten-model-fitting">7. Michaelis–Menten Model Fitting</h2>
+<p>Fit initial rates across substrate concentrations to the Michaelis–Menten equation:</p>
+<p align="center">
+  <i>V</i><sub>0</sub> = (<i>V</i><sub>max</sub> &middot; [S]) / (<i>K</i><sub>M</sub> + [S])
+</p>
+
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.fit</span><span class="w"> </span><span class="kn">import</span> <span class="n">fit_initial_rates_vs_concentration_with_function</span><span class="p">,</span> <span class="n">mm_model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">mercury.analysis.filter</span><span class="w"> </span><span class="kn">import</span> <span class="n">filter_r2_cutoff</span><span class="p">,</span> <span class="n">filter_number_replicates</span>
+
+<span class="n">kinetics_fits_masked</span> <span class="o">=</span> <span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s1">&#39;kinetics_ADP_conc_fits_masked&#39;</span><span class="p">)</span>
+<span class="n">MM_fits</span><span class="p">,</span> <span class="n">MM_pred_data</span> <span class="o">=</span> <span class="n">fit_initial_rates_vs_concentration_with_function</span><span class="p">(</span>
+    <span class="n">data</span><span class="o">=</span><span class="n">kinetics_fits_masked</span><span class="p">,</span>
+    <span class="n">model_func</span><span class="o">=</span><span class="n">mm_model</span>
+<span class="p">)</span>
+
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;kinetics_ADP_MM_fits&#39;</span><span class="p">,</span> <span class="n">MM_fits</span><span class="p">)</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;kinetics_ADP_MM_pred_data&#39;</span><span class="p">,</span> <span class="n">MM_pred_data</span><span class="p">)</span>
+
+<span class="c1"># Filter fits by goodness-of-fit (R^2 &gt;= 0.8) and minimum replicate count (&gt;= 3):</span>
+<span class="n">MM_fits</span> <span class="o">=</span> <span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s1">&#39;kinetics_ADP_MM_fits&#39;</span><span class="p">)</span>
+<span class="n">MM_fits_mask</span> <span class="o">=</span> <span class="n">filter_r2_cutoff</span><span class="p">(</span><span class="n">MM_fits</span><span class="p">,</span> <span class="n">r2_cutoff</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+<span class="n">MM_fits_replicate_mask</span> <span class="o">=</span> <span class="n">filter_number_replicates</span><span class="p">(</span><span class="n">MM_fits</span><span class="p">,</span> <span class="n">min_replicates</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">var_to_check</span><span class="o">=</span><span class="s1">&#39;K_m&#39;</span><span class="p">)</span>
+
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;MM_R2_mask&#39;</span><span class="p">,</span> <span class="n">MM_fits_mask</span><span class="p">)</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;MM_replicate_mask&#39;</span><span class="p">,</span> <span class="n">MM_fits_replicate_mask</span><span class="p">)</span>
+
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">apply_mask</span><span class="p">(</span>
+    <span class="n">run_name</span><span class="o">=</span><span class="s1">&#39;kinetics_ADP_MM_fits&#39;</span><span class="p">,</span> 
+    <span class="n">dep_variables</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;v_max&#39;</span><span class="p">,</span> <span class="s1">&#39;K_m&#39;</span><span class="p">,</span> <span class="s1">&#39;r_squared&#39;</span><span class="p">],</span> 
+    <span class="n">save_as</span><span class="o">=</span><span class="s1">&#39;kinetics_ADP_MM_fits_masked&#39;</span><span class="p">,</span>
+    <span class="n">mask_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;MM_R2_mask&#39;</span><span class="p">,</span> <span class="s1">&#39;MM_replicate_mask&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+
+<span class="c1"># Plot Michaelis-Menten fits on the chip</span>
+<span class="n">plot</span><span class="o">.</span><span class="n">plot_MM_chip</span><span class="p">(</span>
+    <span class="n">experiment</span><span class="o">=</span><span class="n">mercury_experiment</span><span class="p">,</span> 
+    <span class="n">analysis_name</span><span class="o">=</span><span class="s1">&#39;kinetics_ADP_conc_fits_masked&#39;</span><span class="p">,</span> 
+    <span class="n">model_fit_name</span><span class="o">=</span><span class="s1">&#39;kinetics_ADP_MM_fits_masked&#39;</span><span class="p">,</span>
+    <span class="n">model_pred_data_name</span><span class="o">=</span><span class="s1">&#39;kinetics_ADP_MM_pred_data&#39;</span>
+<span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="8-normalizing-by-e-for-kcat-and-v0-e">8. Normalizing by [E] for k<sub>cat</sub> and V<sub>0</sub> / [E]</h2>
+<p>Calculate catalytic rate constants (<i>k</i><sub>cat</sub> = <i>V</i><sub>max</sub> / [E]) and normalized velocities:</p>
+<div class="highlight"><pre><span></span><code><span class="n">enzyme_concentrations</span> <span class="o">=</span> <span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s2">&quot;enzyme_concentrations&quot;</span><span class="p">)</span>
+<span class="n">masked_slopes_vs_conc</span> <span class="o">=</span> <span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s2">&quot;kinetics_ADP_conc_fits_masked&quot;</span><span class="p">)</span>
+<span class="n">masked_fits</span> <span class="o">=</span> <span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s2">&quot;kinetics_ADP_MM_fits_masked&quot;</span><span class="p">)</span>
+<span class="n">pred_data</span> <span class="o">=</span> <span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s2">&quot;kinetics_ADP_MM_pred_data&quot;</span><span class="p">)</span>
+
+<span class="c1"># 1. Normalize initial rates: V_0 / [E]</span>
+<span class="n">masked_V0_div_E_vs_conc</span> <span class="o">=</span> <span class="n">transform_data</span><span class="p">(</span>
+    <span class="n">data_objs</span><span class="o">=</span><span class="p">[</span><span class="n">masked_slopes_vs_conc</span><span class="p">,</span> <span class="n">enzyme_concentrations</span><span class="p">],</span>
+    <span class="n">expr</span><span class="o">=</span><span class="s1">&#39;a_slope / b_concentration&#39;</span><span class="p">,</span>
+    <span class="n">output_name</span><span class="o">=</span><span class="s1">&#39;V0_div_E&#39;</span>
+<span class="p">)</span>
+
+<span class="c1"># 2. Normalize Vmax to get kcat: kcat = Vmax / [E]</span>
+<span class="n">masked_fits_with_kcat</span> <span class="o">=</span> <span class="n">transform_data</span><span class="p">(</span>
+    <span class="n">data_objs</span><span class="o">=</span><span class="p">[</span><span class="n">masked_fits</span><span class="p">,</span> <span class="n">enzyme_concentrations</span><span class="p">],</span>
+    <span class="n">expr</span><span class="o">=</span><span class="s1">&#39;a_v_max / b_concentration&#39;</span><span class="p">,</span>
+    <span class="n">output_name</span><span class="o">=</span><span class="s1">&#39;kcat&#39;</span><span class="p">,</span>
+    <span class="n">keep_existing</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+
+<span class="c1"># 3. Normalize predicted model curves:</span>
+<span class="n">pred_data_div_E</span> <span class="o">=</span> <span class="n">transform_data</span><span class="p">(</span>
+    <span class="n">data_objs</span><span class="o">=</span><span class="p">[</span><span class="n">pred_data</span><span class="p">,</span> <span class="n">enzyme_concentrations</span><span class="p">],</span>
+    <span class="n">expr</span><span class="o">=</span><span class="s1">&#39;a_y_pred / b_concentration&#39;</span><span class="p">,</span>
+    <span class="n">output_name</span><span class="o">=</span><span class="s1">&#39;pred_V0_div_E&#39;</span>
+<span class="p">)</span>
+
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;masked_V0_div_E_vs_conc&#39;</span><span class="p">,</span> <span class="n">masked_V0_div_E_vs_conc</span><span class="p">)</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;masked_fits_with_kcat&#39;</span><span class="p">,</span> <span class="n">masked_fits_with_kcat</span><span class="p">)</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;pred_data_div_E&#39;</span><span class="p">,</span> <span class="n">pred_data_div_E</span><span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="9-replicate-outlier-filtering-z-score-filtering">9. Replicate Outlier Filtering (Z-Score Filtering)</h2>
+<p>Biological microfluidic chips contain replicates of each variant across different chambers. We filter out chambers whose <i>K</i><sub>M</sub>, <i>k</i><sub>cat</sub>, or [E] deviates significantly (&gt; 1.5 standard deviations) from the replicate mean:</p>
+<div class="highlight"><pre><span></span><code><span class="n">z_score_threshold</span> <span class="o">=</span> <span class="mf">1.5</span>
+
+<span class="c1"># Mask chambers with aberrant KM</span>
+<span class="n">MM_outlier_mask_KM</span> <span class="o">=</span> <span class="n">transform_data</span><span class="p">(</span>
+    <span class="n">data_objs</span><span class="o">=</span><span class="p">[</span><span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s1">&#39;masked_fits_with_kcat&#39;</span><span class="p">)],</span>
+    <span class="n">expr</span><span class="o">=</span><span class="s1">&#39;~(np.abs(a.chamber.K_m - np.nanmean(a.sample.K_m)) &gt; z_score_threshold * np.nanstd(a.sample.K_m))&#39;</span><span class="p">,</span>
+    <span class="n">expression_vars</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;z_score_threshold&#39;</span><span class="p">:</span> <span class="n">z_score_threshold</span><span class="p">},</span>
+    <span class="n">output_name</span><span class="o">=</span><span class="s1">&#39;mask&#39;</span>
+<span class="p">)</span>
+
+<span class="c1"># Mask chambers with aberrant kcat</span>
+<span class="n">MM_outlier_mask_kcat</span> <span class="o">=</span> <span class="n">transform_data</span><span class="p">(</span>
+    <span class="n">data_objs</span><span class="o">=</span><span class="p">[</span><span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s1">&#39;masked_fits_with_kcat&#39;</span><span class="p">)],</span>
+    <span class="n">expr</span><span class="o">=</span><span class="s1">&#39;~(np.abs(a.chamber.kcat - np.nanmean(a.sample.kcat)) &gt; z_score_threshold * np.nanstd(a.sample.kcat))&#39;</span><span class="p">,</span>
+    <span class="n">expression_vars</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;z_score_threshold&#39;</span><span class="p">:</span> <span class="n">z_score_threshold</span><span class="p">},</span>
+    <span class="n">output_name</span><span class="o">=</span><span class="s1">&#39;mask&#39;</span>
+<span class="p">)</span>
+
+<span class="c1"># Mask chambers with aberrant protein loading</span>
+<span class="n">MM_outlier_mask_expression</span> <span class="o">=</span> <span class="n">transform_data</span><span class="p">(</span>
+    <span class="n">data_objs</span><span class="o">=</span><span class="p">[</span><span class="n">mercury_experiment</span><span class="o">.</span><span class="n">get_run</span><span class="p">(</span><span class="s1">&#39;enzyme_concentrations&#39;</span><span class="p">)],</span>
+    <span class="n">expr</span><span class="o">=</span><span class="s1">&#39;~(np.abs(a.chamber.concentration - np.nanmean(a.sample.concentration)) &gt; z_score_threshold * np.nanstd(a.sample.concentration))&#39;</span><span class="p">,</span>
+    <span class="n">expression_vars</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;z_score_threshold&#39;</span><span class="p">:</span> <span class="n">z_score_threshold</span><span class="p">},</span>
+    <span class="n">output_name</span><span class="o">=</span><span class="s1">&#39;mask&#39;</span>
+<span class="p">)</span>
+
+<span class="c1"># Combine masks with logical AND</span>
+<span class="n">MM_outlier_mask</span> <span class="o">=</span> <span class="n">transform_data</span><span class="p">(</span>
+    <span class="n">data_objs</span><span class="o">=</span><span class="p">[</span><span class="n">MM_outlier_mask_KM</span><span class="p">,</span> <span class="n">MM_outlier_mask_kcat</span><span class="p">,</span> <span class="n">MM_outlier_mask_expression</span><span class="p">],</span>
+    <span class="n">expr</span><span class="o">=</span><span class="s1">&#39;a.mask.magnitude &amp; b.mask.magnitude &amp; c.mask.magnitude&#39;</span><span class="p">,</span>
+    <span class="n">output_name</span><span class="o">=</span><span class="s1">&#39;mask&#39;</span>
+<span class="p">)</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">set_run</span><span class="p">(</span><span class="s1">&#39;MM_outlier_mask&#39;</span><span class="p">,</span> <span class="n">MM_outlier_mask</span><span class="p">)</span>
+
+<span class="c1"># Apply outlier mask</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">apply_mask</span><span class="p">(</span>
+    <span class="n">run_name</span><span class="o">=</span><span class="s1">&#39;masked_fits_with_kcat&#39;</span><span class="p">,</span>
+    <span class="n">dep_variables</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;v_max&#39;</span><span class="p">,</span> <span class="s1">&#39;K_m&#39;</span><span class="p">,</span> <span class="s1">&#39;r_squared&#39;</span><span class="p">,</span> <span class="s1">&#39;kcat&#39;</span><span class="p">],</span> 
+    <span class="n">save_as</span><span class="o">=</span><span class="s1">&#39;masked_fits_with_kcat_filtered&#39;</span><span class="p">,</span>
+    <span class="n">mask_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;MM_outlier_mask&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">apply_mask</span><span class="p">(</span>
+    <span class="n">run_name</span><span class="o">=</span><span class="s1">&#39;masked_V0_div_E_vs_conc&#39;</span><span class="p">,</span>
+    <span class="n">dep_variables</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;V0_div_E&#39;</span><span class="p">],</span> 
+    <span class="n">save_as</span><span class="o">=</span><span class="s1">&#39;masked_V0_div_E_vs_conc_filtered&#39;</span><span class="p">,</span>
+    <span class="n">mask_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;MM_outlier_mask&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+
+<span class="c1"># Plot final filtered V0/[E] vs concentration:</span>
+<span class="n">plot</span><span class="o">.</span><span class="n">plot_MM_div_E_chip</span><span class="p">(</span>
+    <span class="n">experiment</span><span class="o">=</span><span class="n">mercury_experiment</span><span class="p">,</span> 
+    <span class="n">analysis_name</span><span class="o">=</span><span class="s1">&#39;masked_V0_div_E_vs_conc_filtered&#39;</span><span class="p">,</span> 
+    <span class="n">model_fit_name</span><span class="o">=</span><span class="s1">&#39;masked_fits_with_kcat_filtered&#39;</span><span class="p">,</span>
+    <span class="n">dep_var_name</span><span class="o">=</span><span class="s1">&#39;V0_div_E&#39;</span><span class="p">,</span>
+    <span class="n">model_pred_data_name</span><span class="o">=</span><span class="s1">&#39;pred_data_div_E&#39;</span>
+<span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="10-exporting-results-diagnostics">10. Exporting Results &amp; Diagnostics</h2>
+<p>Export summary tables and publication-ready diagnostic plots:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 1. Export Chamber-Level Results (one row per chamber)</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">export_MM_chamber_data</span><span class="p">(</span>
+    <span class="n">run_name</span><span class="o">=</span><span class="s1">&#39;masked_fits_with_kcat_filtered&#39;</span><span class="p">,</span> 
+    <span class="n">enzyme_concentration_run_name</span><span class="o">=</span><span class="s1">&#39;enzyme_concentrations&#39;</span><span class="p">,</span> 
+    <span class="n">file_name</span><span class="o">=</span><span class="s1">&#39;MM_chamber_data.csv&#39;</span>
+<span class="p">)</span>
+
+<span class="c1"># 2. Export Sample-Level Summaries (means, standard deviations, and replicate counts per variant)</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">export_MM_sample_data</span><span class="p">(</span>
+    <span class="n">run_name</span><span class="o">=</span><span class="s1">&#39;masked_fits_with_kcat_filtered&#39;</span><span class="p">,</span> 
+    <span class="n">enzyme_concentration_run_name</span><span class="o">=</span><span class="s1">&#39;enzyme_concentrations&#39;</span><span class="p">,</span> 
+    <span class="n">file_name</span><span class="o">=</span><span class="s1">&#39;MM_sample_data.csv&#39;</span>
+<span class="p">)</span>
+
+<span class="c1"># 3. Export Sample Subplots PDF</span>
+<span class="c1"># Generates a multipage PDF showing Michaelis-Menten curves, replicate error bars, and parameter envelopes</span>
+<span class="n">mercury_experiment</span><span class="o">.</span><span class="n">export_mm_subplots_by_sample</span><span class="p">(</span>
+    <span class="n">analysis_name</span><span class="o">=</span><span class="s1">&#39;masked_V0_div_E_vs_conc_filtered&#39;</span><span class="p">,</span>
+    <span class="n">model_fit_name</span><span class="o">=</span><span class="s1">&#39;masked_fits_with_kcat_filtered&#39;</span><span class="p">,</span>
+    <span class="n">dep_var_label</span><span class="o">=</span><span class="s1">&#39;V0_div_E&#39;</span><span class="p">,</span>
+    <span class="n">export_path</span><span class="o">=</span><span class="s1">&#39;mm_sample_subplots.pdf&#39;</span>
+<span class="p">)</span>
+
+<span class="c1"># 4. (Optional) Full End-to-End Visual Summary</span>
+<span class="c1"># Generates comprehensive diagnostics for each sample showing raw images, standard curves, initial rates, and fits</span>
+<span class="c1"># mercury_experiment.export_end_to_end_summary_by_sample(</span>
+<span class="c1">#     export_dir=&#39;./all_samples_visual_summary&#39;,</span>
+<span class="c1">#     button_quant_csv=str(root / &#39;button_quant.csv&#39;),</span>
+<span class="c1">#     standard_curve_csv=str(root / &#39;standard_data.csv.bz2&#39;),</span>
+<span class="c1">#     kinetics_csv=str(root / &#39;kinetics_data.csv.bz2&#39;)</span>
+<span class="c1"># )</span>
+</code></pre></div>
+<hr />
+<h2 id="output-files-summary">Output Files Summary</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Level</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>MM_sample_data.csv</code></td>
+<td>Sample</td>
+<td>Aggregated <i>k</i><sub>cat</sub>, <i>K</i><sub>M</sub>, [E], fit R<sup>2</sup>, and replicate count per variant</td>
+</tr>
+<tr>
+<td><code>MM_chamber_data.csv</code></td>
+<td>Chamber</td>
+<td>Individual chamber fit parameters, standard errors, and outlier status</td>
+</tr>
+<tr>
+<td><code>mm_sample_subplots.pdf</code></td>
+<td>Visual</td>
+<td>Subplot grid showing mean rates, standard error bars, and Michaelis–Menten fit curves</td>
+</tr>
+<tr>
+<td><code>all_samples_visual_summary/</code></td>
+<td>Diagnostic</td>
+<td>Multi-panel visual summaries showing microscope stamp images, standard curves, and rate slopes</td>
+</tr>
+</tbody>
+</table>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../../quickstart/" class="btn btn-neutral float-left" title="Quickstart"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../notebook_processing/" class="btn btn-neutral float-right" title="Image Processing & Quantification">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/pinneylab/Mercury" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../../quickstart/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../notebook_processing/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -22,7 +22,7 @@ exp = MercuryExperiment(db_api=db)
 
 ## 2. Fitting Binding Isotherms
 
-Fit binding isotherms ($K_d$ and $R_{max}$) to chamber or sample data:
+Fit binding isotherms (<i>K</i><sub>d</sub> and <i>R</i><sub>max</sub>) to chamber or sample data:
 
 ```python
 from mercury.analysis.fit import fit_binding_isotherm

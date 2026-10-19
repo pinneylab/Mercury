@@ -1,5 +1,5 @@
 # Utilities
-from typing import List, Tuple
+from typing import List, Tuple, Union, Optional, Sequence
 import re
 from copy import deepcopy
 from pathlib import Path
@@ -16,6 +16,7 @@ from mercury.db_api.mercury_db_api import AbstractMercuryDBAPI, MercuryDBExcepti
 from mercury.db_api.data import Data4D, Data3D, Data2D, Meta
 from mercury.analysis.plot import plot_chip
 from mercury.analysis.fit import mm_model, binding_isotherm_model
+from mercury.analysis.export import data_to_dataframe, export_data_to_csv
 #from mercury.analysis.fit import fit_luminance_vs_time, fit_luminance_vs_concentration
 
 # Plotting
@@ -137,6 +138,89 @@ class MercuryExperiment:
         self.set_run(save_as, masked)
 
     ### DATA EXPORT ###
+    def export_run(
+        self,
+        run: Union[str, Data2D, Data3D, Data4D],
+        output_dir: Optional[Union[str, Path]] = None,
+        file_name: Optional[str] = None,
+        aggregate_by_sample: bool = False,
+        agg: Union[str, Sequence[str]] = ("mean", "std"),
+        include_units: bool = True,
+        include_replicates: bool = True,
+        include_chamber_ids: bool = False,
+        save_csv: bool = True,
+        chamber_col: str = "chamber",
+        sample_col: str = "sample",
+        **kwargs,
+    ) -> pd.DataFrame:
+        """Export any single run (Data2D, Data3D, or Data4D) to CSV and/or return a pandas DataFrame.
+
+        Outputs tidy well-level data by default, with an option to aggregate across replicates
+        per-sample using sample_IDs.
+
+        Args:
+            run: Run name string (retrieved via self.get_run) or a DataND instance.
+            output_dir: Directory where the CSV file will be written. If None, uses current working directory.
+            file_name: Name of the CSV file. If None, defaults to '{run_name}_{sample|chamber}_data.csv'.
+            aggregate_by_sample: If True, aggregates data across replicates per sample.
+            agg: Aggregation statistic(s) to compute when aggregate_by_sample=True (default: ('mean', 'std')).
+                 Supports 'avg' as an alias for 'mean'.
+            include_units: If True, appends unit labels to column headers where applicable.
+            include_replicates: If True and aggregating by sample, includes a 'replicates' count column.
+            include_chamber_ids: If True and aggregating by sample, includes contributing chamber IDs.
+            save_csv: If True, writes the resulting DataFrame to a CSV file. If False, only returns DataFrame.
+            chamber_col: Column header for chamber identifiers (default: 'chamber').
+            sample_col: Column header for sample identifiers (default: 'sample').
+
+        Returns:
+            pd.DataFrame containing the exported data.
+        """
+        if isinstance(run, str):
+            run_name = run
+            run_data = self.get_run(run_name)
+        else:
+            run_data = run
+            run_name = getattr(getattr(run_data, "meta", None), "description", None) or "data"
+
+        df = data_to_dataframe(
+            data=run_data,
+            aggregate_by_sample=aggregate_by_sample,
+            agg=agg,
+            include_units=include_units,
+            include_replicates=include_replicates,
+            include_chamber_ids=include_chamber_ids,
+            chamber_col=chamber_col,
+            sample_col=sample_col,
+        )
+
+        if save_csv:
+            if output_dir is None:
+                output_dir = os.getcwd()
+            if file_name is None:
+                suffix = "sample" if aggregate_by_sample else "chamber"
+                file_name = f"{run_name}_{suffix}_data.csv"
+
+            out_path = Path(output_dir) / file_name
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            df.to_csv(str(out_path), index=False)
+
+            mode_desc = "Sample-aggregated" if aggregate_by_sample else "Chamber-level"
+            print(f"{mode_desc} data exported to {out_path}")
+
+        return df
+
+    export_to_csv = export_run
+    export_run_to_csv = export_run
+
+    def to_dataframe(
+        self,
+        run: Union[str, Data2D, Data3D, Data4D],
+        aggregate_by_sample: bool = False,
+        **kwargs,
+    ) -> pd.DataFrame:
+        """Convert any run to a pandas DataFrame without saving to disk."""
+        return self.export_run(run=run, aggregate_by_sample=aggregate_by_sample, save_csv=False, **kwargs)
+
     def export_sample_vmax_data(self, run_name: str, output_dir: str = None, file_name: str = None):
         '''
         Export per-sample vmax data to a CSV file, for Data2D objects.

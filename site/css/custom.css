@@ -21,3 +21,11 @@ h2 {
     margin-top: 2rem !important;
     padding-top: 1rem;
 }
+
+/* Center and shrink diagram images to 50% */
+img.half-size {
+    display: block;
+    margin: 1.5rem auto;
+    width: 50% !important;
+    max-width: 500px;
+}

@@ -1,4 +1,6 @@
 site_name: Mercury Documentation
+site_url: https://pinneylab.github.io/mercury/
+repo_url: https://github.com/pinneylab/Mercury
 
 theme:
   name: readthedocs
@@ -25,13 +27,17 @@ extra_css:
 
 markdown_extensions:
   - admonition
+  - attr_list
   - pymdownx.highlight
   - pymdownx.superfences
 
 nav:
   - Overview: index.md
   - Quickstart: quickstart.md
-  - User Guides:
+  - Notebook Tutorials:
+      - Michaelis–Menten Analysis & QC: guides/notebook_analysis.md
+      - Image Processing & Quantification: guides/notebook_processing.md
+  - Module Guides:
       - Image Processing & Chips: guides/processing.md
       - Image Stitching: guides/stitching.md
       - Database API & Data I/O: guides/db_api.md

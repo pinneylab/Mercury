@@ -76,6 +76,16 @@ class Data4D:
         if self.dep_var.ndim != 4:
             raise ValueError(f"dep_var must be 4D, got {self.dep_var.shape}")
 
+    def to_dataframe(self, aggregate_by_sample: bool = False, **kwargs):
+        """Convert Data4D object into a pandas DataFrame."""
+        from mercury.analysis.export import data_to_dataframe
+        return data_to_dataframe(self, aggregate_by_sample=aggregate_by_sample, **kwargs)
+
+    def export_to_csv(self, file_path, aggregate_by_sample: bool = False, **kwargs):
+        """Export Data4D object to a CSV file."""
+        from mercury.analysis.export import export_data_to_csv
+        return export_data_to_csv(self, file_path=file_path, aggregate_by_sample=aggregate_by_sample, **kwargs)
+
 @dataclass
 class Data3D:
     """Three-dimensional dataset structure containing summary assay observations.
@@ -103,6 +113,16 @@ class Data3D:
         if self.dep_var.ndim != 3:
             raise ValueError(f"dep_var must be 3D, got {self.dep_var.shape}")
 
+    def to_dataframe(self, aggregate_by_sample: bool = False, **kwargs):
+        """Convert Data3D object into a pandas DataFrame."""
+        from mercury.analysis.export import data_to_dataframe
+        return data_to_dataframe(self, aggregate_by_sample=aggregate_by_sample, **kwargs)
+
+    def export_to_csv(self, file_path, aggregate_by_sample: bool = False, **kwargs):
+        """Export Data3D object to a CSV file."""
+        from mercury.analysis.export import export_data_to_csv
+        return export_data_to_csv(self, file_path=file_path, aggregate_by_sample=aggregate_by_sample, **kwargs)
+
 @dataclass
 class Data2D:
     """Two-dimensional dataset structure containing single-timepoint or fitted summary values per chamber.
@@ -129,3 +149,13 @@ class Data2D:
         self.indep_vars.__post_init__()
         if self.dep_var.ndim != 2:
             raise ValueError(f"dep_var must be 2D, got {self.dep_var.shape}")
+
+    def to_dataframe(self, aggregate_by_sample: bool = False, **kwargs):
+        """Convert Data2D object into a pandas DataFrame."""
+        from mercury.analysis.export import data_to_dataframe
+        return data_to_dataframe(self, aggregate_by_sample=aggregate_by_sample, **kwargs)
+
+    def export_to_csv(self, file_path, aggregate_by_sample: bool = False, **kwargs):
+        """Export Data2D object to a CSV file."""
+        from mercury.analysis.export import export_data_to_csv
+        return export_data_to_csv(self, file_path=file_path, aggregate_by_sample=aggregate_by_sample, **kwargs)
