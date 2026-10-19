@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><link rel="canonical" href="https://pinneylab.github.io/mercury/development/publishing/" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>Releases, PyPI & Docs - Mercury Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+        <link href="../../css/custom.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Releases, PyPI \u0026 Docs";
+        var mkdocs_page_input_path = "development/publishing.md";
+        var mkdocs_page_url = "/mercury/development/publishing/";
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> Mercury Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Overview</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../quickstart/">Quickstart</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Notebook Tutorials</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../guides/notebook_analysis/">Michaelis–Menten Analysis & QC</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../guides/notebook_processing/">Image Processing & Quantification</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Developer Guide</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../workflow/">Workflow & Testing</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Releases, PyPI & Docs</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#1-creating-a-release">1. Creating a Release</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#step-1-version-bumping">Step 1: Version Bumping</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#step-2-build-release-packages-locally">Step 2: Build Release Packages Locally</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#step-3-tag-the-release-in-git">Step 3: Tag the Release in Git</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#step-4-create-a-github-release">Step 4: Create a GitHub Release</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#2-automated-pypi-publishing">2. Automated PyPI Publishing</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#how-it-works">How it Works</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#monitoring-the-deployment">Monitoring the Deployment</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#3-creating-publishing-documentation">3. Creating &amp; Publishing Documentation</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#documentation-layout">Documentation Layout</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#writing-and-previewing-locally">Writing and Previewing Locally</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#updating-pipeline-diagrams">Updating Pipeline Diagrams</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#building-and-validating-the-site">Building and Validating the Site</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#publishing-to-github-pages-pinneylabgithubiomercury">Publishing to GitHub Pages (pinneylab.github.io/Mercury)</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Module Guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../guides/processing/">Image Processing & Chips</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../guides/stitching/">Image Stitching</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../guides/db_api/">Database API & Data I/O</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../guides/analysis/">Analysis & Fitting</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/analysis/">mercury.analysis</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/db_api/">mercury.db_api</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/processing/">mercury.processing</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/stitching/">mercury.stitching</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../api/scripts/">mercury.scripts</a>
+                  </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../cli/">CLI Reference</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">Mercury Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Developer Guide</li>
+      <li class="breadcrumb-item active">Releases, PyPI & Docs</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/pinneylab/Mercury/edit/master/docs/development/publishing.md" class="icon icon-github"> Edit on GitHub</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="releases-pypi-documentation-deployment">Releases, PyPI &amp; Documentation Deployment</h1>
+<p>This guide covers how to bump versions, build distribution artifacts, publish official releases to PyPI, and deploy documentation updates to the lab's GitHub Pages site.</p>
+<hr />
+<h2 id="1-creating-a-release">1. Creating a Release</h2>
+<p>When new features or bug fixes on <code>main</code> are ready to be distributed to lab members and the public, follow the release lifecycle below.</p>
+<h3 id="step-1-version-bumping">Step 1: Version Bumping</h3>
+<p>Mercury follows <a href="https://semver.org/">Semantic Versioning</a> (<code>MAJOR.MINOR.PATCH</code>).
+Update the version number in <a href="file:///home/freitas/workspace/Mercury_Code_Development/Mercury/pyproject.toml"><code>pyproject.toml</code></a>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[tool.poetry]</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mercury-kinetics&quot;</span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;2.0.2&quot;</span><span class="w">   </span><span class="c1"># &lt;-- Update this version string</span>
+</code></pre></div>
+<p>Commit this version bump to <code>main</code>:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>add<span class="w"> </span>pyproject.toml
+git<span class="w"> </span>commit<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;Bump version to 2.0.2&quot;</span>
+git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>main
+</code></pre></div>
+<h3 id="step-2-build-release-packages-locally">Step 2: Build Release Packages Locally</h3>
+<p>Verify that the packaging build succeeds and produces clean distribution artifacts:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Ensure build tools are installed</span>
+pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>build
+
+<span class="c1"># Clean any existing artifacts in dist/</span>
+rm<span class="w"> </span>-rf<span class="w"> </span>dist/
+
+<span class="c1"># Build sdist (.tar.gz) and wheel (.whl)</span>
+python<span class="w"> </span>-m<span class="w"> </span>build
+</code></pre></div>
+<p>This generates two files in <code>dist/</code>:
+- <code>dist/mercury_kinetics-2.0.2.tar.gz</code> (Source distribution)
+- <code>dist/mercury_kinetics-2.0.2-py3-none-any.whl</code> (Built wheel)</p>
+<p>Test installing the newly built wheel into a fresh virtual environment:</p>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>dist/mercury_kinetics-2.0.2-py3-none-any.whl
+python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import mercury; print(mercury.__version__)&quot;</span>
+</code></pre></div>
+<h3 id="step-3-tag-the-release-in-git">Step 3: Tag the Release in Git</h3>
+<p>Tag the commit corresponding to the release:</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>tag<span class="w"> </span>-a<span class="w"> </span>v2.0.2<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;Release v2.0.2: summary of major changes&quot;</span>
+git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>v2.0.2
+</code></pre></div>
+<h3 id="step-4-create-a-github-release">Step 4: Create a GitHub Release</h3>
+<ol>
+<li>Go to <a href="https://github.com/pinneylab/Mercury/releases">github.com/pinneylab/Mercury/releases</a>.</li>
+<li>Click <strong>Draft a new release</strong>.</li>
+<li>Select your newly pushed tag (e.g. <code>v2.0.2</code>).</li>
+<li>Title the release (e.g. <code>Release v2.0.2</code>).</li>
+<li>Add release notes detailing what was added or fixed.</li>
+<li>(Optional) Drag and drop the <code>.whl</code> and <code>.tar.gz</code> files from <code>dist/</code> into the release binaries box.</li>
+<li>Click <strong>Publish release</strong>.</li>
+</ol>
+<hr />
+<h2 id="2-automated-pypi-publishing">2. Automated PyPI Publishing</h2>
+<p>Mercury uses <strong>GitHub Trusted Publishing</strong> (OIDC) to automatically deploy releases to PyPI without needing hardcoded API tokens.</p>
+<h3 id="how-it-works">How it Works</h3>
+<p>The GitHub Actions workflow <a href="file:///home/freitas/workspace/Mercury_Code_Development/Mercury/.github/workflows/publish.yml"><code>.github/workflows/publish.yml</code></a> triggers automatically whenever a new GitHub Release is published (<code>types: [created]</code>):</p>
+<div class="highlight"><pre><span></span><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Upload Python Package to PyPI when a Release is Created</span>
+
+<span class="nt">on</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">release</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">types</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">created</span><span class="p p-Indicator">]</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pypi-publish</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Publish release to PyPI</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+<span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pypi</span>
+<span class="w">      </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://pypi.org/p/mercury-kinetics</span>
+<span class="w">    </span><span class="nt">permissions</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">id-token</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">write</span><span class="w">  </span><span class="c1"># OpenID Connect token for PyPI authentication</span>
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v4</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Set up Python</span>
+<span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/setup-python@v4</span>
+<span class="w">        </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">python-version</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;3.12&quot;</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Build package</span>
+<span class="w">        </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">          </span><span class="no">pip install build</span>
+<span class="w">          </span><span class="no">python -m build</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Publish package distributions to PyPI</span>
+<span class="w">        </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pypa/gh-action-pypi-publish@release/v1</span>
+</code></pre></div>
+<h3 id="monitoring-the-deployment">Monitoring the Deployment</h3>
+<ol>
+<li>Go to the <strong>Actions</strong> tab on GitHub: <a href="https://github.com/pinneylab/Mercury/actions">github.com/pinneylab/Mercury/actions</a>.</li>
+<li>Click on the running <code>Upload Python Package to PyPI</code> workflow.</li>
+<li>Once completed (usually ~1–2 minutes), check the published package at:
+   <a href="https://pypi.org/project/mercury-kinetics/">https://pypi.org/project/mercury-kinetics/</a></li>
+</ol>
+<p>Lab members and external users can then install the update via:</p>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>mercury-kinetics
+</code></pre></div>
+<hr />
+<h2 id="3-creating-publishing-documentation">3. Creating &amp; Publishing Documentation</h2>
+<p>Mercury's documentation is powered by <a href="https://www.mkdocs.org/">MkDocs</a> with the <code>readthedocs</code> theme and Python docstring parsing via <code>mkdocstrings</code>.</p>
+<h3 id="documentation-layout">Documentation Layout</h3>
+<div class="highlight"><pre><span></span><code>Mercury/
+├── mkdocs.yml              # Site navigation, plugins, and metadata
+└── docs/
+    ├── index.md            # Homepage
+    ├── quickstart.md       # Quickstart guide
+    ├── guides/             # User &amp; notebook walkthrough guides
+    │   ├── notebook_analysis.md
+    │   └── notebook_processing.md
+    ├── development/        # Developer documentation
+    ├── images/             # PNG figures and Mermaid (.mmd) source files
+    └── css/custom.css      # Custom stylesheet overrides
+</code></pre></div>
+<h3 id="writing-and-previewing-locally">Writing and Previewing Locally</h3>
+<p>Activate your <code>mkdocs</code> environment and start the live development server:</p>
+<div class="highlight"><pre><span></span><code>conda<span class="w"> </span>activate<span class="w"> </span>mkdocs
+<span class="nb">cd</span><span class="w"> </span>/path/to/Mercury
+
+mkdocs<span class="w"> </span>serve
+</code></pre></div>
+<p>Open <code>http://127.0.0.1:8000/</code> in your browser. The server watches all markdown files, diagrams, and stylesheets, automatically hot-reloading changes in real time.</p>
+<h3 id="updating-pipeline-diagrams">Updating Pipeline Diagrams</h3>
+<p>Diagrams are stored as Mermaid source files (<code>.mmd</code>) in <code>docs/images/</code>. If you modify any node or step:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>docs/images
+./render.sh
+</code></pre></div>
+<p>This compiles high-resolution, 2× scale PNGs (<code>analysis_pipeline.png</code>, <code>processing_pipeline.png</code>) using <code>@mermaid-js/mermaid-cli</code>.</p>
+<h3 id="building-and-validating-the-site">Building and Validating the Site</h3>
+<p>Before publishing, verify that all internal links, docstrings, and images compile without error:</p>
+<div class="highlight"><pre><span></span><code>mkdocs<span class="w"> </span>build
+</code></pre></div>
+<h3 id="publishing-to-github-pages-pinneylabgithubiomercury">Publishing to GitHub Pages (<code>pinneylab.github.io/Mercury</code>)</h3>
+<p>To push your latest documentation live to GitHub Pages, run:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/Mercury
+mkdocs<span class="w"> </span>gh-deploy
+</code></pre></div>
+<p><strong>What this does behind the scenes:</strong>
+1. Compiles the markdown documentation into static HTML.
+2. Switches to a clean <code>gh-pages</code> branch.
+3. Commits the built static site and pushes it to <code>origin/gh-pages</code>.
+4. GitHub Pages immediately detects the commit and serves it at <a href="https://pinneylab.github.io/Mercury/">pinneylab.github.io/Mercury/</a>.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../workflow/" class="btn btn-neutral float-left" title="Workflow & Testing"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../../guides/processing/" class="btn btn-neutral float-right" title="Image Processing & Chips">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/pinneylab/Mercury" class="fa fa-github" style="color: #fcfcfc"> GitHub</a>
+        </span>
+    
+    
+      <span><a href="../workflow/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../../guides/processing/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

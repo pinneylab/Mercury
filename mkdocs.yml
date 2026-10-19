@@ -37,6 +37,9 @@ nav:
   - Notebook Tutorials:
       - Michaelis–Menten Analysis & QC: guides/notebook_analysis.md
       - Image Processing & Quantification: guides/notebook_processing.md
+  - Developer Guide:
+      - Workflow & Testing: development/workflow.md
+      - Releases, PyPI & Docs: development/publishing.md
   - Module Guides:
       - Image Processing & Chips: guides/processing.md
       - Image Stitching: guides/stitching.md
