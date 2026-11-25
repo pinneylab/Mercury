@@ -830,6 +830,10 @@ def parse_lightsource_settings(image_data: pd.DataFrame, colname: str = 'lightso
 
     import ast
 
+    # Older imaging.csv files have no lightsource_settings column; nothing to expand.
+    if colname not in image_data.columns:
+        return image_data
+
     # Drop NA, get unique settings (strings), convert to dicts
     ls_settings_strings = image_data[colname].dropna().unique().tolist()
     dicts = []
