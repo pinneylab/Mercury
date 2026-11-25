@@ -1,0 +1,24 @@
+{
+  "_comment": "Example permissions for the project an agent runs processing from (e.g. the lab-notebook repo's .claude/settings.json). Merge into the existing file; adjust the data path. Deny rules are enforced by Claude Code, not by the agent.",
+  "permissions": {
+    "allow": [
+      "Bash(conda run --no-capture-output -n mercury python -m mercury.pipeline:*)",
+      "Bash(mercury-run:*)",
+      "Read(//home/jzhang/Documents/scope_data/**)"
+    ],
+    "ask": [
+      "Bash(conda run --no-capture-output -n mercury python -m mercury.pipeline * --overwrite*)",
+      "Bash(conda run --no-capture-output -n mercury python -m mercury.pipeline * --allow-dirty*)"
+    ],
+    "deny": [
+      "Edit(//home/jzhang/Documents/scope_data/**)",
+      "Write(//home/jzhang/Documents/scope_data/**)",
+      "Edit(**/processing.resolved.yaml)",
+      "Write(**/processing.resolved.yaml)",
+      "Edit(**/processing.agent.yaml)",
+      "Write(**/processing.agent.yaml)",
+      "Edit(**/processing.log.jsonl)",
+      "Write(**/processing.log.jsonl)"
+    ]
+  }
+}
