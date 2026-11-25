@@ -1,0 +1,54 @@
+# processing.yaml: user intent for one HT-BAM experiment (mercury-run).
+# Written by a person. The agent never edits this file; it records tier-1 changes in
+# processing.agent.yaml via `mercury-run override`, and everything it decided in
+# processing.resolved.yaml.
+version: 1
+root: /path/to/scope_data/YYYYMMDD        # experiment folder with imaging.csv and raw_images/
+acqui_origin: [true, false]               # imaging starts top-right
+n_workers: null                           # null = auto (CPU and ~50% RAM)
+output_dir: processed                     # outputs go to <root>/<output_dir>/
+
+stitching:
+  rotation: 0.98                          # global rotation guess (deg); null = estimate from test rasters
+  overlap_by_nosepiece: {}                # e.g. {4: 0.12}; default is raster_overlap from imaging.csv
+  test_rasters:                           # >= 1 raster per objective, with visible features
+    - <raster dir name under raw_images/>
+  ff_correction: []                       # raster dir-name globs that get flat-field correction
+  method: cut
+
+background:
+  images: '*background*'                  # glob, or a list of globs/names; must give one background per settings group
+  settings_to_match: [temp, hum, setup, dname, lightsource, channel, exposure,
+                      camera_mode, binning, nosepiece, apply_ff_correction]
+
+devices:
+  d1:
+    setup: s2
+    dims: [32, 56]                        # (columns, rows) of unit cells
+    pinlist: <pinlist>.csv                # relative to root
+    corners: [[396, 537], [6623, 555], [395, 6877], [6634, 6878]]   # UL, UR, BL, BR (x, y); starting guess
+
+series:                                   # processed in this order; corners carry forward per device
+  - name: button_quant
+    identifiers: [<image identifier>, <image identifier>]
+    features: button                      # chamber | button | all
+    reference: null                       # null = find features on every image
+    output: button_quant.csv
+  - name: standard_curve_nadh
+    identifiers: [<series identifier>]
+    features: chamber
+    devices: [d2]                         # default: all devices
+    # corners: {d2: [[x, y], [x, y], [x, y], [x, y]]}   # optional per-series starting guess
+    reference:
+      pick: max                           # brightest | first | last | max | min | image
+      by: concentration                   # series_index.json metadata column (for max/min/first/last)
+    coerce_chamber_center: false
+    save_summary_images: false
+    output: standard_data.csv.bz2
+
+qc:                                       # gates; only the user changes these
+  seam_max_residual_px: 1.0               # median |seam residual| along and across
+  seam_min_inliers: 5
+  corner_max_shift_px: 3.0                # proposed corner move that still counts as "pass"
+  corner_max_residual_px: 10.0            # gross lattice misfit (finder scatter is 4-7 px)
+  corner_max_iter: 3

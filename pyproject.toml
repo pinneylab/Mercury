@@ -10,7 +10,8 @@ packages = [
 ]
 
 include = [
-  { path = "src/mercury/db_api/units/*.txt", format = ["sdist", "wheel"] }
+  { path = "src/mercury/db_api/units/*.txt", format = ["sdist", "wheel"] },
+  { path = "src/mercury/pipeline/processing_template.yaml", format = ["sdist", "wheel"] }
 ]
 
 [tool.poetry.dependencies]
@@ -37,6 +38,7 @@ anywidget = ">=0.9.0"
 
 [tool.poetry.scripts]
 pick-corners = "mercury.scripts.run_corner_picker:main"
+mercury-run = "mercury.pipeline.cli:main"
 
 [build-system]
 requires = ["poetry-core"]
