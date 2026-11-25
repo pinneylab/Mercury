@@ -89,10 +89,14 @@ Down the line:
    - Prefer `processing/roi.py` to prevent bloating of `chip.py`.
    - Down the line: ensure that RoiSet to quantify to render summary is the standard. No need to do this immediately.
 
-3. Optimize button finding.
+3. Enable saving of summary images during parallelized feature mapping (easy fix in theory).
+
+4. Optimize button finding.
     - Remove unused copy of cicularSubsection; cut deepcopy in button search.
     - Vectorize the course grid search
     - Update 110 to the actual shape (100)
 
-4. Abstract `roi.py`
-    - Abstract classes. For each geometry, specify headers and metric calculation functions
+5. Abstract `roi.py` and cleanup deprecated functions in `chip.py`
+    - Abstract classes. For each geometry, specify headers and metric calculation functions.
+    - Feature finding lives in `chip.py`. Geometry transfer, quantification, and storage live in `roi.py`. `Processor` class orchestrates. 
+        - Still some overlap in quantification (i.e. `.summarize()` methods and `roi._quantify_*`), summary image saving, and geometry transfer (i.e. deprecated `mapto`) 
