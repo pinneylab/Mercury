@@ -130,6 +130,57 @@ class Processor:
         for idx in self.image_data[device_mask].index:
             self.image_data.at[idx, 'corners'] = corners
 
+    def check_corners(
+        self,
+        dname: str,
+        image: Union[Path, str],
+        corners: List[Tuple] = None,
+        refine: bool = True,
+        save: bool = True,
+        **kwargs,
+    ) -> dict:
+        """Score a device's corners on one image (typically the reference) and propose corrections.
+
+        Does not change the corners: if the result is acceptable, pass
+        summary['proposed_corners'] to set_corners() yourself.
+
+        Args:
+            dname: Device name.
+            image: Stitched/background-subtracted image to score on (one where every unit cell is visible).
+            corners: Corners to score; defaults to those already set via set_corners().
+            refine: Re-run on proposed corners while the status is 'refit' (see corners.refine_corners).
+            save: Write the per-stamp table to <root>/qc/corners/<image stem>_<dname>.csv.
+            **kwargs: Passed to corners.check_corners (features, max_corner_shift_px, max_residual_px, ...).
+                features defaults to this Processor's features ('all' -> 'chamber').
+
+        Returns:
+            Summary dict with status ('pass' | 'refit' | 'fail' | 'unmeasurable'), fitted
+            per-corner delta, proposed_corners, residuals, ring check, and (if refine) 'history'.
+        """
+        from mercury.processing import corners as corner_qc
+
+        assert dname in self.experiment.devices, '{} not found in experiment.'.format(dname)
+        if corners is None:
+            set_ = self.image_data.loc[self.image_data['dname'] == dname, 'corners'].dropna()
+            assert len(set_) > 0, 'No corners set for {}; pass corners= or call set_corners().'.format(dname)
+            corners = set_.iloc[0]
+        dims = tuple(self.experiment.devices[dname].dims)
+        kwargs.setdefault('features', 'chamber' if self.features == 'all' else self.features)
+
+        if refine:
+            summary, offsets, history = corner_qc.refine_corners(image, corners, dims, **kwargs)
+            summary = {**summary, 'history': history}
+        else:
+            summary, offsets = corner_qc.check_corners(image, corners, dims, **kwargs)
+
+        summary = {'dname': dname, 'image': str(image), **summary}
+        if save:
+            out = self.experiment.root / 'qc' / 'corners' / f'{Path(image).stem}_{dname}.csv'
+            out.parent.mkdir(parents=True, exist_ok=True)
+            offsets.to_csv(out, index=False)
+            summary['offsets_csv'] = str(out)
+        return summary
+
     def set_reference(
         self, 
         image: Union[Path, str], 
