@@ -737,6 +737,53 @@ def _estimate_bgsub_bytes_per_worker(sample_image_path: Path) -> int:
     return max(file_size * 6, 16 * 1024 * 1024)
 
 
+def parse_lightsource_settings(image_data: pd.DataFrame, colname: str = 'lightsource_settings') -> pd.DataFrame:
+    """
+    Parses the lightsource_settings column, expands the (stringified) dict into separate columns, 
+    and fills missing values appropriately. Returns the updated DataFrame.
+    """
+
+    import ast
+
+    # Drop NA, get unique settings (strings), convert to dicts
+    ls_settings_strings = image_data[colname].dropna().unique().tolist()
+    dicts = []
+    for s in ls_settings_strings:
+        try:
+            d = ast.literal_eval(s)
+            if isinstance(d, dict):
+                dicts.append(d)
+        except Exception:
+            # skip if not a valid dict string
+            continue
+    
+    # Get all unique keys across all settings
+    unique_keys = set()
+    for d in dicts:
+        unique_keys.update(d.keys())
+
+    # Create empty columns for each unique key if not exist
+    for key in unique_keys:
+        if key not in image_data.columns:
+            image_data[key] = pd.NA
+
+    # Populate the columns for each row
+    for idx, row in image_data.iterrows():
+        ls_setting = row[colname]
+        if pd.isna(ls_setting):
+            continue
+        try:
+            setting_dict = ast.literal_eval(ls_setting)
+            if not isinstance(setting_dict, dict):
+                continue
+        except Exception:
+            continue
+        for key in unique_keys:
+            image_data.at[idx, key] = setting_dict.get(key, pd.NA)
+
+    return image_data
+
+
 class BackgroundSubtractor:
     """Manages background image matching and subtraction across stitched image datasets.
 
@@ -766,6 +813,9 @@ class BackgroundSubtractor:
         # make absolute image paths
         stitched_image_data['image_path'] = stitched_image_data['image_path'].apply(Path)
         stitched_image_data['image_path'] = stitched_image_data['image_path'].apply(lambda p: self._stitched_image_path / p)
+
+        # parse lightsource settings
+        stitched_image_data = parse_lightsource_settings(stitched_image_data)
 
         return stitched_image_data
     
