@@ -157,6 +157,246 @@ def assemble_cut(
     return canvas
 
 
+# ---------------------------------------------------------------------------
+# Seam residuals: quantify stitch "jaggedness" in pixels.
+#
+# Two tiles that are neighbours on the stitched canvas image the same strip of
+# the device. Registering those strips (on raw, unrotated tiles) gives the
+# physical stage step between the tiles in camera coordinates:
+#     along  = component parallel to the seam   (≈ D·sin θ, θ = camera/stage angle)
+#     across = component perpendicular to it    (relative to the nominal step)
+# where D is the true tile-to-tile step. A cut stitch with rotation θ_c and
+# overlap f_c then leaves, at each seam,
+#     along residual  = D·sin(θ_seam - θ_c)
+#     across residual = D·cos(θ_seam - θ_c) - pitch(f_c)
+# with pitch(f) = size - 2·int(size·f/2), the cut-stitch tile pitch
+# (see cut_margin_retained). Residuals of 0 px mean a seamless stitch.
+# Measurement is done once per raster; scoring candidate parameters is cheap.
+# ---------------------------------------------------------------------------
+
+SEAM_COLUMNS = [
+    "direction", "i_a", "i_b", "c_a", "r_a", "c_b", "r_b", "tile_px",
+    "contrast", "shift_along", "shift_across", "step_px", "theta_deg",
+    "ncc", "inlier",
+]
+
+
+def seam_pairs(
+    dims: Tuple[int, int], acqui_ori: Tuple[bool, bool]
+) -> List[Tuple[str, int, int, Tuple[int, int], Tuple[int, int]]]:
+    """Neighbouring tile pairs as placed on the stitched canvas.
+
+    Uses grid_index (the same mapping assemble_cut uses), so the seams measured
+    here are exactly the seams in the stitched image, for any acqui_ori.
+
+    Returns:
+        List of (direction, i_a, i_b, (c_a, r_a), (c_b, r_b)): tile A is left of
+        (direction 'H') or above (direction 'V') tile B on the canvas, and i_*
+        index into the flat image_refs list.
+    """
+    cols, rows = int(dims[0]), int(dims[1])
+    pos_to_i = {grid_index(i, dims, acqui_ori): i for i in range(cols * rows)}
+    pairs = []
+    for c in range(cols):
+        for r in range(rows):
+            if c + 1 < cols:
+                pairs.append(("H", pos_to_i[(c, r)], pos_to_i[(c + 1, r)], (c, r), (c + 1, r)))
+            if r + 1 < rows:
+                pairs.append(("V", pos_to_i[(c, r)], pos_to_i[(c, r + 1)], (c, r), (c, r + 1)))
+    return pairs
+
+
+def _ncc_after_shift(ref: np.ndarray, mov: np.ndarray, shift) -> float:
+    """Pearson correlation of ref and mov over their overlap, with ref(p) ≈ mov(p - shift)."""
+    sy, sx = int(round(shift[0])), int(round(shift[1]))
+    h, w = ref.shape
+    a = ref[max(0, sy):min(h, h + sy), max(0, sx):min(w, w + sx)].ravel()
+    b = mov[max(0, -sy):min(h, h - sy), max(0, -sx):min(w, w - sx)].ravel()
+    if a.size < 16 or a.std() == 0 or b.std() == 0:
+        return float("nan")
+    return float(np.corrcoef(a, b)[0, 1])
+
+
+def measure_seams(
+    image_refs: List[Union[str, pathlib.Path]],
+    dims: Tuple[int, int],
+    acqui_ori: Tuple[bool, bool],
+    overlap0: float = 0.1,
+    n_seams: int = 20,
+    crop_frac: float = 0.15,
+    upsample_factor: int = 10,
+    max_shift: float = 150.0,
+    outlier_px: float = 3.0,
+    min_ncc: float = 0.5,
+):
+    """Register the highest-contrast seams of one raster (raw, unrotated tiles).
+
+    Args:
+        image_refs: Tile paths in raster order (flat index c * rows + r, i.e.
+            imaging.csv sorted by raster_col_index, raster_row_index).
+        dims: (cols, rows) of the raster.
+        acqui_ori: Acquisition origin flags, as passed to the stitcher.
+        overlap0: Nominal overlap fraction; sets the width of the compared strips.
+        n_seams: Number of highest-contrast seams to register.
+        crop_frac: Fraction of the seam length trimmed from each end (avoids corners).
+        upsample_factor: Sub-pixel precision of phase cross-correlation (1/upsample px).
+        max_shift: Shifts larger than this (px) are rejected outright.
+        outlier_px: Minimum tolerance (px) for the per-direction consensus test.
+        min_ncc: Minimum correlation of the aligned strips for a seam to count. Real
+            overlapping strips score ~0.8-0.98 on 20260730 data; unrelated or
+            featureless strips score near 0.
+
+    Returns:
+        pd.DataFrame, one row per registered seam (columns SEAM_COLUMNS).
+        shift_along / shift_across: offset of tile B's features relative to A,
+        parallel / perpendicular to the seam. step_px and theta_deg: implied
+        stage step and camera/stage angle (degrees, in rotate_image's convention).
+        inlier: aligned strips correlate (ncc >= min_ncc) and the seam agrees with
+        the per-direction consensus.
+    """
+    import pandas as pd
+    from skimage.registration import phase_cross_correlation
+
+    cols, rows = int(dims[0]), int(dims[1])
+    if len(image_refs) != cols * rows:
+        raise ValueError(f"Expected {cols * rows} tiles for dims {dims}, got {len(image_refs)}")
+    if not 0 < overlap0 < 1:
+        raise ValueError(f"overlap0 must be in (0, 1), got {overlap0}")
+
+    # Load each tile once; keep only its four edge strips.
+    strips = {}
+    for i, ref in enumerate(image_refs):
+        t = io.imread(ref).astype(np.float32)
+        h, w = t.shape[:2]
+        ov_x, ov_y = int(w * overlap0), int(h * overlap0)
+        cm_y, cm_x = int(h * crop_frac), int(w * crop_frac)
+        strips[i] = {
+            "right": t[cm_y:h - cm_y, w - ov_x:],
+            "left": t[cm_y:h - cm_y, :ov_x],
+            "bottom": t[h - ov_y:, cm_x:w - cm_x],
+            "top": t[:ov_y, cm_x:w - cm_x],
+            "shape": (h, w),
+        }
+
+    candidates = []
+    for direction, i_a, i_b, pa, pb in seam_pairs(dims, acqui_ori):
+        if direction == "H":
+            a, b = strips[i_a]["right"], strips[i_b]["left"]
+            tile_px = strips[i_a]["shape"][1]
+        else:
+            a, b = strips[i_a]["bottom"], strips[i_b]["top"]
+            tile_px = strips[i_a]["shape"][0]
+        contrast = 0.5 * (float(a.std()) + float(b.std()))
+        candidates.append((contrast, direction, i_a, i_b, pa, pb, a, b, tile_px))
+
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    records = []
+    for contrast, direction, i_a, i_b, pa, pb, a, b, tile_px in candidates[:n_seams]:
+        a0, b0 = a - a.mean(), b - b.mean()
+        # normalization=None (plain cross-correlation): phase normalization locks
+        # onto the strip edges (zero shift) when features are smooth.
+        shift, _, _ = phase_cross_correlation(
+            a0, b0, upsample_factor=upsample_factor, normalization=None
+        )
+        dy, dx = float(shift[0]), float(shift[1])
+        # Reference A, moving B: A(p) ≈ B(p - shift).
+        if direction == "H":
+            along, across = dy, dx
+        else:
+            along, across = -dx, dy
+        nominal = tile_px - int(tile_px * overlap0)
+        ncc = _ncc_after_shift(a0, b0, shift)
+        records.append({
+            "direction": direction, "i_a": i_a, "i_b": i_b,
+            "c_a": pa[0], "r_a": pa[1], "c_b": pb[0], "r_b": pb[1],
+            "tile_px": tile_px, "contrast": contrast,
+            "shift_along": along, "shift_across": across,
+            "step_px": float(np.hypot(nominal + across, along)),
+            "theta_deg": float(np.degrees(np.arctan2(along, nominal + across))),
+            "ncc": ncc,
+            "inlier": bool(abs(along) < max_shift and abs(across) < max_shift
+                           and np.isfinite(ncc) and ncc >= min_ncc),
+        })
+
+    seams = pd.DataFrame(records, columns=SEAM_COLUMNS)
+    if seams.empty:
+        return seams
+    seams["inlier"] = seams["inlier"].astype(bool)
+
+    # Consensus per direction: periodic device features can alias a strip onto
+    # the wrong chamber, and dim seams register on noise. Both land far from
+    # the per-direction median and are flagged as outliers.
+    for _, grp in seams[seams["inlier"]].groupby("direction"):
+        dtheta = np.radians(grp["theta_deg"] - grp["theta_deg"].median())
+        along_res = grp["step_px"] * np.sin(dtheta)
+        across = grp["step_px"] * np.cos(dtheta)
+        for res in (along_res, across - across.median()):
+            dev = np.abs(res - np.median(res))
+            tol = max(outlier_px, 3.0 * 1.4826 * np.median(dev))
+            seams.loc[grp.index[dev > tol], "inlier"] = False
+    return seams
+
+
+def cut_pitch(tile_px: int, overlap: float) -> int:
+    """Tile pitch (px) on the cut-stitch canvas for a given overlap."""
+    return cut_margin_retained(int(tile_px), overlap)[1]
+
+
+def score_seams(seams, rotation: float, overlap: float) -> dict:
+    """Residual seam offsets (px) left by cut-stitching with (rotation, overlap).
+
+    Pure arithmetic on a measure_seams table (no image I/O); only inlier seams count.
+
+    Returns:
+        dict with n_seams, n_inliers; along_/across_ median_abs and p95_abs over all
+        inlier seams; and signed medians per direction (along_H, across_H, along_V,
+        across_V; NaN if a direction has no inliers). Positive across = gap
+        (true step longer than the stitch pitch; overlap set too high).
+    """
+    out = {"n_seams": int(len(seams)),
+           "n_inliers": int(seams["inlier"].sum()) if len(seams) else 0}
+    keys = ["along_median_abs", "along_p95_abs", "across_median_abs", "across_p95_abs",
+            "along_H", "across_H", "along_V", "across_V"]
+    if out["n_inliers"] == 0:
+        out.update({k: float("nan") for k in keys})
+        return out
+    s = seams[seams["inlier"]]
+    dtheta = np.radians(s["theta_deg"] - rotation)
+    along = (s["step_px"] * np.sin(dtheta)).to_numpy()
+    pitch = np.array([cut_pitch(px, overlap) for px in s["tile_px"]])
+    across = (s["step_px"] * np.cos(dtheta)).to_numpy() - pitch
+    out["along_median_abs"] = float(np.median(np.abs(along)))
+    out["along_p95_abs"] = float(np.percentile(np.abs(along), 95))
+    out["across_median_abs"] = float(np.median(np.abs(across)))
+    out["across_p95_abs"] = float(np.percentile(np.abs(across), 95))
+    for d in ("H", "V"):
+        m = (s["direction"] == d).to_numpy()
+        out[f"along_{d}"] = float(np.median(along[m])) if m.any() else float("nan")
+        out[f"across_{d}"] = float(np.median(across[m])) if m.any() else float("nan")
+    return out
+
+
+def estimate_from_seams(seams, min_inliers: int = 5) -> Tuple[float, float]:
+    """Best-fit (rotation in degrees, overlap fraction) from inlier seams.
+
+    rotation = median seam angle;
+    overlap  = 1 - median(step·cos(θ_seam - rotation)) / tile_px.
+    The cut stitch rounds its margin to whole pixels, so the achievable overlap
+    is quantised in steps of 2/tile_px; score_seams accounts for that.
+
+    Raises:
+        ValueError: if fewer than min_inliers seams survived.
+    """
+    n = int(seams["inlier"].sum()) if len(seams) else 0
+    if n < min_inliers:
+        raise ValueError(f"Only {n} inlier seams (< {min_inliers}); raster lacks usable features.")
+    s = seams[seams["inlier"]]
+    rotation = float(np.median(s["theta_deg"]))
+    proj = s["step_px"] * np.cos(np.radians(s["theta_deg"] - rotation))
+    overlap = float(np.median(1.0 - proj / s["tile_px"]))
+    return rotation, overlap
+
+
 def find_imaging_csv(img_path: pathlib.Path) -> pathlib.Path:
     """Traverses parent directories to locate the imaging.csv manifest file.
 
@@ -540,202 +780,49 @@ class Raster(ABC):
         self._images = None
         return result
 
-    def detect_overlap(self) -> float:
+    def _seams(self, num_boundaries: int = 20):
+        """measure_seams on this raster's raw tiles, using its params."""
+        p = self.params
+        overlap0 = p.overlap if (p.overlap and 0.0 < p.overlap < 1.0) else 0.1
+        return measure_seams(
+            self._image_refs, p.dims, p.acqui_ori, overlap0=overlap0, n_seams=num_boundaries
+        )
+
+    def detect_overlap(self, num_boundaries: int = 20) -> float:
         """
-        Dynamically calculates the optimal overlap fraction using phase cross-correlation
-        across high-contrast boundaries of the raster images.
+        Estimates the tile overlap fraction by registering neighbouring tiles'
+        overlapping strips (see measure_seams / estimate_from_seams).
+
+        Raises:
+            ValueError: if too few seams could be registered.
         """
-        from skimage.registration import phase_cross_correlation
-        
-        imsize = self.params.size
-        expected_overlap = int(imsize * 0.1)
-        if expected_overlap <= 0:
-            return 0.1
-            
-        cols_count = self.params.dims[0]
-        rows_count = self.params.dims[1]
-        
-        if len(self._images) != cols_count * rows_count:
-            return 0.1
-            
-        tiles = {}
-        for c in range(cols_count):
-            for r in range(rows_count):
-                tiles[(c, r)] = self._images[c * rows_count + r]
-                
-        boundaries = []
-        
-        # 1. Search horizontal boundaries
-        for r in range(rows_count):
-            for c in range(cols_count - 1):
-                t1 = tiles[(c, r)].astype(float)
-                t2 = tiles[(c+1, r)].astype(float)
-                
-                crop_margin = int(imsize * 0.15)
-                strip1 = t1[crop_margin:-crop_margin, -expected_overlap:]
-                strip2 = t2[crop_margin:-crop_margin, :expected_overlap]
-                
-                std_val = (np.std(strip1) + np.std(strip2)) / 2
-                boundaries.append((std_val, strip1, strip2, 'H'))
-                
-        # 2. Search vertical boundaries
-        for c in range(cols_count):
-            for r in range(rows_count - 1):
-                t1 = tiles[(c, r)].astype(float)
-                t2 = tiles[(c, r+1)].astype(float)
-                
-                crop_margin = int(imsize * 0.15)
-                strip1 = t1[-expected_overlap:, crop_margin:-crop_margin]
-                strip2 = t2[:expected_overlap, crop_margin:-crop_margin]
-                
-                std_val = (np.std(strip1) + np.std(strip2)) / 2
-                boundaries.append((std_val, strip1, strip2, 'V'))
-                
-        if not boundaries:
-            return 0.1
-            
-        # Sort by standard deviation (highest feature contrast first)
-        boundaries.sort(key=lambda x: x[0], reverse=True)
-        
-        calculated_overlaps = []
-        for std_val, strip1, strip2, b_type in boundaries[:5]:
-            try:
-                shift, error, diffphase = phase_cross_correlation(strip1, strip2, upsample_factor=1)
-                if b_type == 'H':
-                    shift_val = shift[1]
-                else:
-                    shift_val = shift[0]
-                
-                # Filter out shifts that are unreasonably large to prevent aligning unrelated periodic channels
-                if abs(shift_val) < 50:
-                    actual_overlap = expected_overlap - shift_val
-                    overlap_frac = actual_overlap / imsize
-                    calculated_overlaps.append(overlap_frac)
-            except Exception:
-                pass
-                
-        if not calculated_overlaps:
-            # TODO: This should raise, instead of assuming 10%
-            return 0.1
-            
-        return float(np.median(calculated_overlaps))
+        n = int(self.params.dims[0]) * int(self.params.dims[1])
+        if len(self._image_refs) != n:
+            raise ValueError(f"Expected {n} tiles, got {len(self._image_refs)}")
+        _, overlap = estimate_from_seams(self._seams(num_boundaries))
+        return overlap
 
     def detect_rotation(self, search_range=None, num_boundaries=20) -> float:
         """
-        Dynamically calculates the camera-to-stage rotation angle by registering
-        unrotated neighboring tiles and measuring the diagonal drift (shear) 
-        introduced by the stage translation relative to the camera sensor.
+        Estimates the camera-to-stage rotation angle (degrees) by registering
+        neighbouring raw tiles and measuring the offset along each seam
+        (see measure_seams / estimate_from_seams).
+
+        Neighbours are taken from grid_index, so acqui_ori is respected.
+
+        Raises:
+            ValueError: if too few seams could be registered, or the estimate
+                falls outside search_range.
         """
-        from skimage.registration import phase_cross_correlation
-        
-        imsize = self.params.size
-        overlap = self.params.overlap
-        expected_overlap = int(imsize * overlap)
-        if expected_overlap <= 0:
-            expected_overlap = int(imsize * 0.1) # fallback
-            
-        cols_count = self.params.dims[0]
-        rows_count = self.params.dims[1]
-        
-        if len(self._image_refs) != cols_count * rows_count:
+        n = int(self.params.dims[0]) * int(self.params.dims[1])
+        if len(self._image_refs) != n:
             return 0.0
-            
-        # Helper to load raw tiles on demand and cache them
-        raw_cache = {}
-        def get_raw_tile(c, r):
-            coord = (c, r)
-            if coord not in raw_cache:
-                idx = c * rows_count + r
-                raw_cache[coord] = io.imread(self._image_refs[idx]).astype(float)
-            return raw_cache[coord]
-            
-        # Find horizontal and vertical boundaries and calculate contrast
-        all_boundaries = []
-        crop_margin = int(imsize * 0.15)
-        
-        # 1. Horizontal boundaries
-        for r in range(rows_count):
-            for c in range(cols_count - 1):
-                try:
-                    t1 = get_raw_tile(c, r)
-                    t2 = get_raw_tile(c + 1, r)
-                    
-                    strip1 = t1[crop_margin:-crop_margin, -expected_overlap:]
-                    strip2 = t2[crop_margin:-crop_margin, :expected_overlap]
-                    std_val = (np.std(strip1) + np.std(strip2)) / 2
-                    all_boundaries.append((std_val, c, r, c + 1, r, 'H'))
-                except Exception:
-                    pass
-                    
-        # 2. Vertical boundaries
-        for c in range(cols_count):
-            for r in range(rows_count - 1):
-                try:
-                    t1 = get_raw_tile(c, r)
-                    t2 = get_raw_tile(c, r + 1)
-                    
-                    strip1 = t1[-expected_overlap:, crop_margin:-crop_margin]
-                    strip2 = t2[:expected_overlap, crop_margin:-crop_margin]
-                    std_val = (np.std(strip1) + np.std(strip2)) / 2
-                    all_boundaries.append((std_val, c, r, c, r + 1, 'V'))
-                except Exception:
-                    pass
-                    
-        if not all_boundaries:
-            print("Warning: No valid boundaries found for rotation detection. Defaulting to 0.0")
-            return 0.0
-            
-        # Sort by contrast (standard deviation) descending and take the top N
-        all_boundaries.sort(key=lambda x: x[0], reverse=True)
-        
-        n_boundaries = num_boundaries if num_boundaries is not None else 20
-        selected_boundaries = all_boundaries[:min(n_boundaries, len(all_boundaries))]
-        
-        angles = []
-        
-        # For each selected boundary, evaluate the translation shift and compute angle
-        for _, c1, r1, c2, r2, b_type in selected_boundaries:
-            try:
-                t1 = get_raw_tile(c1, r1)
-                t2 = get_raw_tile(c2, r2)
-                
-                # Demean to improve cross correlation sensitivity to features
-                t1_dm = t1 - t1.mean()
-                t2_dm = t2 - t2.mean()
-                
-                if b_type == 'H':
-                    strip1 = t1_dm[crop_margin:-crop_margin, -expected_overlap:]
-                    strip2 = t2_dm[crop_margin:-crop_margin, :expected_overlap]
-                    
-                    shift, error, diffphase = phase_cross_correlation(strip1, strip2, upsample_factor=10)
-                    dy, dx = shift[0], shift[1]
-                    
-                    # This should discard found deviations that are greater than 1 row or column over.
-                    if abs(dx) < 150 and abs(dy) < 150:
-                        Dx = imsize - expected_overlap
-                        theta_val = np.degrees(np.arctan2(dy, Dx + dx))
-                        angles.append(theta_val)
-                else:
-                    strip1 = t1_dm[-expected_overlap:, crop_margin:-crop_margin]
-                    strip2 = t2_dm[:expected_overlap, crop_margin:-crop_margin]
-                    
-                    shift, error, diffphase = phase_cross_correlation(strip1, strip2, upsample_factor=10)
-                    dy, dx = shift[0], shift[1]
-                    
-                    # same here, discarding too-large deviations. We want the nearest matching shift.
-                    if abs(dx) < 150 and abs(dy) < 150:
-                        Dy = imsize - expected_overlap
-                        theta_val = np.degrees(np.arctan2(-dx, Dy + dy))
-                        angles.append(theta_val)
-                        
-            except Exception:
-                pass
-                
-        if not angles:
-            raise ValueError("Warning: No valid rotation angles calculated.")
-            #return 0.0
-            
-        return float(np.median(angles))
+        rotation, _ = estimate_from_seams(self._seams(num_boundaries or 20))
+        if search_range is not None and not (search_range[0] <= rotation <= search_range[1]):
+            raise ValueError(
+                f"Detected rotation {rotation:.3f} deg outside search range {search_range}"
+            )
+        return rotation
 
     def overlap_stitch(self):
         """

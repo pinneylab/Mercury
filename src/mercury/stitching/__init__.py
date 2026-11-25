@@ -350,6 +350,91 @@ class ImageStitcher:
         raster_obj = rastering.FlatRaster(image_refs=raster, params=temp_params)
         return raster_obj.detect_rotation(search_range=search_range)
 
+    def check_stitching_params(
+        self,
+        raster_path: Union[Path, str],
+        rotation: float,
+        overlap: Optional[float] = None,
+        acqui_origin: Tuple[bool, bool] = (True, False),
+        n_seams: int = 20,
+        max_residual_px: float = 1.0,
+        min_inliers: int = 5,
+        save_seams: bool = True,
+    ) -> Tuple[dict, pd.DataFrame]:
+        """Scores (rotation, overlap) on one test raster by its seam residuals, without stitching.
+
+        Registers the overlapping strips of the highest-contrast neighbouring tiles
+        (raw, unrotated) and reports how far apart they would land in a cut stitch
+        with these parameters. See rastering.measure_seams / score_seams.
+
+        Args:
+            raster_path (Path or str): Raster directory under raw_images/.
+            rotation (float): Candidate rotation in degrees.
+            overlap (float, optional): Candidate overlap fraction. Defaults to the raster's
+                raster_overlap in imaging.csv (what stitch_images would use).
+            acqui_origin (tuple[bool, bool], optional): Acquisition origin flags.
+            n_seams (int, optional): Number of highest-contrast seams to register.
+            max_residual_px (float, optional): Pass if the median |residual| along and across
+                the seams are both <= this many pixels.
+            min_inliers (int, optional): Fewer consistent seams than this -> 'unmeasurable'.
+            save_seams (bool, optional): Write the per-seam table to
+                <root>/qc/seams/<raster name>.csv (kept out of raw/stitched/bgsub dirs).
+
+        Returns:
+            (summary dict, per-seam DataFrame). summary['status'] is 'pass', 'fail', or
+            'unmeasurable'; it also carries rotation_estimate / overlap_estimate fitted
+            from the same seams (NaN if unmeasurable).
+        """
+        raster_path = Path(raster_path) if not isinstance(raster_path, Path) else raster_path
+        df = self.raster_data[self.raster_data['image_path_parent'] == raster_path]
+        if df.empty:
+            raise ValueError(f"No raster data found for {raster_path}")
+
+        overlap_csv, width, height = df[['raster_overlap', 'raster_width', 'raster_height']].iloc[0]
+        overlap0 = float(overlap_csv) if (0.0 < float(overlap_csv) < 1.0) else 0.1
+        overlap = overlap0 if overlap is None else float(overlap)
+
+        seams = rastering.measure_seams(
+            df['image_path'].to_list(),
+            dims=(int(width), int(height)),
+            acqui_ori=acqui_origin,
+            overlap0=overlap0,
+            n_seams=n_seams,
+        )
+        score = rastering.score_seams(seams, rotation, overlap)
+
+        try:
+            rot_est, ov_est = rastering.estimate_from_seams(seams, min_inliers=min_inliers)
+        except ValueError:
+            rot_est, ov_est = float('nan'), float('nan')
+
+        if score['n_inliers'] < min_inliers:
+            status = 'unmeasurable'
+        elif max(score['along_median_abs'], score['across_median_abs']) <= max_residual_px:
+            status = 'pass'
+        else:
+            status = 'fail'
+
+        seams_csv = None
+        if save_seams:
+            seams_csv = self.root_path / 'qc' / 'seams' / f"{raster_path.name}.csv"
+            seams_csv.parent.mkdir(parents=True, exist_ok=True)
+            seams.to_csv(seams_csv, index=False)
+
+        summary = {
+            'raster': str(raster_path),
+            'rotation': float(rotation),
+            'overlap': overlap,
+            'overlap_imaging_csv': overlap0,
+            **score,
+            'rotation_estimate': rot_est,
+            'overlap_estimate': ov_est,
+            'max_residual_px': max_residual_px,
+            'status': status,
+            'seams_csv': None if seams_csv is None else str(seams_csv),
+        }
+        return summary, seams
+
     # TODO: consider implementing stitch_images as a dispatcher
     # to appropriate serial or parallel method based on n_workers
     # rotation and job extraction logic would be shared
